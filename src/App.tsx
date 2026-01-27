@@ -8,6 +8,7 @@ import Index from "./pages/Index";
 import Editor from "./pages/Editor";
 import Display from "./pages/Display";
 import Auth from "./pages/Auth";
+import Projects from "./pages/Projects";
 import NotFound from "./pages/NotFound";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
@@ -27,6 +28,14 @@ const App = () => (
             element={
               <ProtectedRoute>
                 <Editor />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/projects" 
+            element={
+              <ProtectedRoute>
+                <Projects />
               </ProtectedRoute>
             } 
           />

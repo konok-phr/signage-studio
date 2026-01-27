@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Play, Settings, Tv2, Sparkles, LogIn } from 'lucide-react';
+import { Play, Settings, Tv2, Sparkles, LogIn, FolderOpen } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function Index() {
@@ -80,11 +80,19 @@ export default function Index() {
                 <>
                   <Button 
                     variant="outline" 
+                    onClick={() => navigate('/projects')} 
+                    className="gap-2"
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    My Projects
+                  </Button>
+                  <Button 
+                    variant="default" 
                     onClick={() => navigate('/admin')} 
                     className="gap-2"
                   >
                     <Settings className="h-4 w-4" />
-                    Admin Panel
+                    New Project
                   </Button>
                   <Button 
                     variant="ghost" 
