@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +15,7 @@ import { PublishModal } from '@/components/signage/PublishModal';
 import { useSignageProject } from '@/hooks/useSignageProject';
 import { useAuth } from '@/hooks/useAuth';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Generate a random 6-character code
 function generatePublishCode(): string {
@@ -45,11 +46,13 @@ async function generateUniquePublishCode(): Promise<string> {
 
 export default function Editor() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editProjectId = searchParams.get('project');
+  
   const { user } = useAuth();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [publishCode, setPublishCode] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,6 +76,9 @@ export default function Editor() {
     selectedElement,
     isPublished,
     setIsPublished,
+    publishCode,
+    setPublishCode,
+    isLoading,
     addElement,
     updateElement,
     deleteElement,
@@ -80,7 +86,7 @@ export default function Editor() {
     bringToFront,
     sendToBack,
     clearCanvas,
-  } = useSignageProject();
+  } = useSignageProject({ initialProjectId: editProjectId });
 
   const handleAddElement = (type: ElementType) => {
     const baseElement = {
@@ -259,6 +265,26 @@ export default function Editor() {
       setIsSaving(false);
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex flex-col bg-background">
+        <div className="h-14 border-b bg-card flex items-center px-4 gap-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-8 w-24" />
+          <div className="flex-1" />
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-20" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading project...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <DndContext sensors={sensors} onDragEnd={handleDragEnd}>

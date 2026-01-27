@@ -1,14 +1,58 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
 import { CanvasElement, ASPECT_RATIOS } from '@/types/signage';
 
-export function useSignageProject() {
-  const [projectId, setProjectId] = useState<string | null>(null);
+interface UseSignageProjectOptions {
+  initialProjectId?: string | null;
+}
+
+export function useSignageProject(options: UseSignageProjectOptions = {}) {
+  const [projectId, setProjectId] = useState<string | null>(options.initialProjectId || null);
   const [projectName, setProjectName] = useState('Untitled Project');
   const [ratio, setRatio] = useState('16:9');
   const [elements, setElements] = useState<CanvasElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isPublished, setIsPublished] = useState(false);
+  const [publishCode, setPublishCode] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load existing project
+  const loadProject = useCallback(async (id: string) => {
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('signage_projects')
+        .select('*')
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setProjectId(data.id);
+        setProjectName(data.name);
+        setRatio(data.ratio);
+        setElements(data.elements as unknown as CanvasElement[]);
+        setIsPublished(data.is_published);
+        setPublishCode(data.publish_code);
+      }
+      
+      return data;
+    } catch (error) {
+      console.error('Error loading project:', error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Load project on mount if initialProjectId is provided
+  useEffect(() => {
+    if (options.initialProjectId) {
+      loadProject(options.initialProjectId);
+    }
+  }, [options.initialProjectId, loadProject]);
 
   const currentRatio = ASPECT_RATIOS.find(r => r.value === ratio) || ASPECT_RATIOS[0];
 
@@ -75,6 +119,17 @@ export function useSignageProject() {
     setSelectedElementId(null);
   }, []);
 
+  // Reset to new project state
+  const resetProject = useCallback(() => {
+    setProjectId(null);
+    setProjectName('Untitled Project');
+    setRatio('16:9');
+    setElements([]);
+    setSelectedElementId(null);
+    setIsPublished(false);
+    setPublishCode(null);
+  }, []);
+
   const selectedElement = elements.find(el => el.id === selectedElementId) || null;
 
   return {
@@ -92,6 +147,11 @@ export function useSignageProject() {
     selectedElement,
     isPublished,
     setIsPublished,
+    publishCode,
+    setPublishCode,
+    isLoading,
+    loadProject,
+    resetProject,
     addElement,
     updateElement,
     deleteElement,
