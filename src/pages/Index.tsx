@@ -21,9 +21,10 @@ export default function Index() {
 
     setIsLoading(true);
     try {
+      // Use the public view that excludes sensitive user_id field
       const { data, error } = await supabase
-        .from('signage_projects')
-        .select('id, is_published')
+        .from('signage_projects_public')
+        .select('id')
         .eq('publish_code', code.trim().toUpperCase())
         .maybeSingle();
 
@@ -34,10 +35,7 @@ export default function Index() {
         return;
       }
 
-      if (!data.is_published) {
-        toast.error('This display is not published yet.');
-        return;
-      }
+      // View already filters for published projects, so no additional check needed
 
       navigate(`/display/${data.id}`);
     } catch (error) {
@@ -163,16 +161,16 @@ export default function Index() {
                             <Play className="h-8 w-8 text-primary" />
                           </div>
                           <h2 className="text-xl font-semibold text-foreground mb-2">Enter Display Code</h2>
-                          <p className="text-sm text-muted-foreground">6-character code from your admin panel</p>
+                          <p className="text-sm text-muted-foreground">12-character code from your admin panel</p>
                         </div>
                         
                         <div className="space-y-4">
                           <Input
                             value={code}
                             onChange={(e) => setCode(e.target.value.toUpperCase())}
-                            placeholder="ABC123"
-                            className="text-center text-3xl font-mono tracking-[0.5em] h-16 bg-background/80 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/20"
-                            maxLength={6}
+                            placeholder="ABCD1234EFGH"
+                            className="text-center text-2xl font-mono tracking-[0.3em] h-16 bg-background/80 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/20"
+                            maxLength={12}
                             onKeyDown={(e) => e.key === 'Enter' && handleLoadDisplay()}
                           />
                           

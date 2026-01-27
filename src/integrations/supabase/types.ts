@@ -61,7 +61,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      signage_projects_public: {
+        Row: {
+          canvas_height: number | null
+          canvas_width: number | null
+          elements: Json | null
+          id: string | null
+          is_published: boolean | null
+          name: string | null
+          publish_code: string | null
+          published_at: string | null
+          ratio: string | null
+        }
+        Insert: {
+          canvas_height?: number | null
+          canvas_width?: number | null
+          elements?: Json | null
+          id?: string | null
+          is_published?: boolean | null
+          name?: string | null
+          publish_code?: string | null
+          published_at?: string | null
+          ratio?: string | null
+        }
+        Update: {
+          canvas_height?: number | null
+          canvas_width?: number | null
+          elements?: Json | null
+          id?: string | null
+          is_published?: boolean | null
+          name?: string | null
+          publish_code?: string | null
+          published_at?: string | null
+          ratio?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       [_ in never]: never
