@@ -197,7 +197,7 @@ export default function Projects() {
                       variant="outline"
                       size="sm"
                       className="flex-1 gap-2"
-                      onClick={() => navigate('/admin')}
+                      onClick={() => navigate(`/admin?project=${project.id}`)}
                     >
                       <Edit className="h-4 w-4" />
                       Edit
