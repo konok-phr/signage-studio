@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
@@ -13,12 +14,29 @@ import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
 import { useSignageProject } from '@/hooks/useSignageProject';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 
+// Generate a random 6-character code
+function generatePublishCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 export default function Editor() {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [showPropertyPanel, setShowPropertyPanel] = useState(true);
+  const [publishCode, setPublishCode] = useState<string | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
   const {
     projectId,
@@ -106,6 +124,18 @@ export default function Editor() {
     }
   };
 
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && over.id === 'canvas-drop-zone') {
+      const type = active.data.current?.type as ElementType;
+      if (type) {
+        handleAddElement(type);
+        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} element added!`);
+      }
+    }
+  };
+
   const handleSelectTemplate = (templateElements: CanvasElement[], templateRatio: string) => {
     setElements(templateElements);
     setRatio(templateRatio);
@@ -153,6 +183,8 @@ export default function Editor() {
   const handlePublish = async () => {
     setIsSaving(true);
     try {
+      const code = publishCode || generatePublishCode();
+      
       const projectData = {
         name: projectName,
         ratio,
@@ -161,6 +193,7 @@ export default function Editor() {
         elements: JSON.parse(JSON.stringify(elements)) as Json,
         is_published: true,
         published_at: new Date().toISOString(),
+        publish_code: code,
       };
 
       let savedProjectId = projectId;
@@ -185,9 +218,16 @@ export default function Editor() {
       }
 
       setIsPublished(true);
-      const playerUrl = `${window.location.origin}/player/${savedProjectId}`;
-      await navigator.clipboard.writeText(playerUrl);
-      toast.success('Published! Player URL copied to clipboard');
+      setPublishCode(code);
+      
+      await navigator.clipboard.writeText(code);
+      toast.success(
+        <div className="space-y-1">
+          <p className="font-medium">Published successfully!</p>
+          <p className="text-sm">Display code: <span className="font-mono font-bold">{code}</span></p>
+          <p className="text-xs text-muted-foreground">Code copied to clipboard</p>
+        </div>
+      );
     } catch (error) {
       console.error('Publish error:', error);
       toast.error('Failed to publish project');
@@ -197,63 +237,71 @@ export default function Editor() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <EditorToolbar
-        projectName={projectName}
-        onProjectNameChange={setProjectName}
-        ratio={ratio}
-        onRatioChange={setRatio}
-        onSave={handleSave}
-        onPublish={handlePublish}
-        onOpenTemplates={() => setTemplatesOpen(true)}
-        onClearCanvas={clearCanvas}
-        isSaving={isSaving}
-        isPublished={isPublished}
-      />
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="h-screen flex flex-col bg-background">
+        <EditorToolbar
+          projectName={projectName}
+          onProjectNameChange={setProjectName}
+          ratio={ratio}
+          onRatioChange={setRatio}
+          onSave={handleSave}
+          onPublish={handlePublish}
+          onOpenTemplates={() => setTemplatesOpen(true)}
+          onClearCanvas={clearCanvas}
+          isSaving={isSaving}
+          isPublished={isPublished}
+          publishCode={publishCode}
+        />
 
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        <ResizablePanel defaultSize={15} minSize={12} maxSize={20}>
-          <MediaSidebar onAddElement={handleAddElement} />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <DesignCanvas
-            ratio={currentRatio}
-            elements={elements}
-            selectedElementId={selectedElementId}
-            onSelectElement={setSelectedElementId}
-            onUpdateElement={updateElement}
-            onDeleteElement={deleteElement}
-          />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={20} minSize={15} maxSize={25}>
-          <LivePreview ratio={currentRatio} elements={elements} />
-        </ResizablePanel>
-        
-        <ResizableHandle withHandle />
-        
-        <ResizablePanel defaultSize={15} minSize={12} maxSize={25}>
-          <PropertyPanel
-            element={selectedElement}
-            onUpdate={(updates) => selectedElementId && updateElement(selectedElementId, updates)}
-            onDelete={() => selectedElementId && deleteElement(selectedElementId)}
-            onDuplicate={() => selectedElementId && duplicateElement(selectedElementId)}
-            onBringToFront={() => selectedElementId && bringToFront(selectedElementId)}
-            onSendToBack={() => selectedElementId && sendToBack(selectedElementId)}
-          />
-        </ResizablePanel>
-      </ResizablePanelGroup>
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={15} minSize={12} maxSize={20}>
+            <MediaSidebar onAddElement={handleAddElement} />
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <DesignCanvas
+              ratio={currentRatio}
+              elements={elements}
+              selectedElementId={selectedElementId}
+              onSelectElement={setSelectedElementId}
+              onUpdateElement={updateElement}
+              onDeleteElement={deleteElement}
+            />
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          {/* Right panel: Preview + Properties in vertical split */}
+          <ResizablePanel defaultSize={35} minSize={25} maxSize={45}>
+            <ResizablePanelGroup direction="vertical">
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <LivePreview ratio={currentRatio} elements={elements} />
+              </ResizablePanel>
+              
+              <ResizableHandle withHandle />
+              
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <PropertyPanel
+                  element={selectedElement}
+                  onUpdate={(updates) => selectedElementId && updateElement(selectedElementId, updates)}
+                  onDelete={() => selectedElementId && deleteElement(selectedElementId)}
+                  onDuplicate={() => selectedElementId && duplicateElement(selectedElementId)}
+                  onBringToFront={() => selectedElementId && bringToFront(selectedElementId)}
+                  onSendToBack={() => selectedElementId && sendToBack(selectedElementId)}
+                />
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
-      <TemplatesDialog
-        open={templatesOpen}
-        onOpenChange={setTemplatesOpen}
-        onSelectTemplate={handleSelectTemplate}
-      />
-    </div>
+        <TemplatesDialog
+          open={templatesOpen}
+          onOpenChange={setTemplatesOpen}
+          onSelectTemplate={handleSelectTemplate}
+        />
+      </div>
+    </DndContext>
   );
 }

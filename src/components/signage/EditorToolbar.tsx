@@ -2,8 +2,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Save, Globe, LayoutTemplate, Trash2, Monitor, Smartphone, Square, Ratio } from 'lucide-react';
+import { 
+  Save, Globe, LayoutTemplate, Trash2, Monitor, Smartphone, Square, Ratio, 
+  Copy, CheckCheck, Home 
+} from 'lucide-react';
 import { ASPECT_RATIOS } from '@/types/signage';
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface EditorToolbarProps {
   projectName: string;
@@ -16,6 +22,7 @@ interface EditorToolbarProps {
   onClearCanvas: () => void;
   isSaving: boolean;
   isPublished: boolean;
+  publishCode?: string | null;
 }
 
 const ratioIcons = {
@@ -36,10 +43,27 @@ export function EditorToolbar({
   onClearCanvas,
   isSaving,
   isPublished,
+  publishCode,
 }: EditorToolbarProps) {
+  const navigate = useNavigate();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyCode = async () => {
+    if (publishCode) {
+      await navigator.clipboard.writeText(publishCode);
+      setCopied(true);
+      toast.success('Code copied to clipboard!');
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
   return (
     <div className="flex items-center gap-3 px-4 py-3 bg-card border-b shadow-sm">
       {/* Logo / Brand */}
+      <Button variant="ghost" size="icon" onClick={() => navigate('/')} className="h-9 w-9">
+        <Home className="h-4 w-4" />
+      </Button>
+      
       <div className="flex items-center gap-2">
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
           <Monitor className="h-4 w-4 text-primary-foreground" />
@@ -80,6 +104,26 @@ export function EditorToolbar({
 
       <div className="flex-1" />
 
+      {/* Published Code Display */}
+      {isPublished && publishCode && (
+        <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 border border-green-500/30 rounded-lg">
+          <span className="text-xs text-green-600 font-medium">Code:</span>
+          <span className="font-mono font-bold text-green-700">{publishCode}</span>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6"
+            onClick={handleCopyCode}
+          >
+            {copied ? (
+              <CheckCheck className="h-3.5 w-3.5 text-green-600" />
+            ) : (
+              <Copy className="h-3.5 w-3.5 text-green-600" />
+            )}
+          </Button>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="flex items-center gap-2">
         <Button variant="outline" size="sm" className="h-9 gap-2" onClick={onOpenTemplates}>
@@ -101,8 +145,7 @@ export function EditorToolbar({
         
         <Button size="sm" className="h-9 gap-2" onClick={onPublish} disabled={isSaving}>
           <Globe className="h-4 w-4" />
-          <span className="hidden sm:inline">Publish</span>
-          {isPublished && <Badge variant="secondary" className="ml-1 text-xs">Live</Badge>}
+          <span className="hidden sm:inline">{isPublished ? 'Update' : 'Publish'}</span>
         </Button>
       </div>
     </div>
