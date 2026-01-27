@@ -1,4 +1,4 @@
-import { CanvasElement, ImageElement, TextElement, TickerElement, VideoElement } from '@/types/signage';
+import { CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -7,7 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Copy, ArrowUp, ArrowDown } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Trash2, Copy, ArrowUp, ArrowDown, ChevronDown, Palette, Type, Settings2, Image as ImageIcon, Film, LayoutList, PlayCircle } from 'lucide-react';
+import { SlideshowPanel } from './SlideshowPanel';
+import { ImageCropPanel } from './ImageCropPanel';
+import { cn } from '@/lib/utils';
 
 interface PropertyPanelProps {
   element: CanvasElement | null;
@@ -17,6 +22,14 @@ interface PropertyPanelProps {
   onBringToFront: () => void;
   onSendToBack: () => void;
 }
+
+const elementIcons = {
+  image: ImageIcon,
+  video: Film,
+  text: Type,
+  ticker: PlayCircle,
+  slideshow: LayoutList,
+};
 
 export function PropertyPanel({
   element,
@@ -29,214 +42,293 @@ export function PropertyPanel({
   if (!element) {
     return (
       <div className="h-full flex flex-col bg-card border-l">
-        <div className="p-4 border-b">
+        <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
           <h2 className="font-semibold text-lg">Properties</h2>
+          <p className="text-xs text-muted-foreground">Element settings</p>
         </div>
-        <div className="flex-1 flex items-center justify-center text-muted-foreground p-4">
-          <p className="text-center text-sm">Select an element to edit its properties</p>
+        <div className="flex-1 flex items-center justify-center p-6">
+          <div className="text-center space-y-2">
+            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <Settings2 className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <p className="text-sm text-muted-foreground">Select an element to edit</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  const renderImageProperties = (el: ImageElement) => (
-    <>
-      <div className="space-y-2">
-        <Label>Image URL</Label>
-        <Input
-          value={el.src}
-          onChange={(e) => onUpdate({ src: e.target.value })}
-          placeholder="Paste image URL..."
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Object Fit</Label>
-        <Select
-          value={el.objectFit || 'cover'}
-          onValueChange={(value) => onUpdate({ objectFit: value as 'cover' | 'contain' | 'fill' })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="cover">Cover</SelectItem>
-            <SelectItem value="contain">Contain</SelectItem>
-            <SelectItem value="fill">Fill</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    </>
-  );
+  const Icon = elementIcons[element.type];
 
   const renderTextProperties = (el: TextElement) => (
-    <>
-      <div className="space-y-2">
-        <Label>Text Content</Label>
-        <Textarea
-          value={el.content}
-          onChange={(e) => onUpdate({ content: e.target.value })}
-          placeholder="Enter your text..."
-          rows={3}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Font Size: {el.fontSize}px</Label>
-        <Slider
-          value={[el.fontSize]}
-          onValueChange={([value]) => onUpdate({ fontSize: value })}
-          min={12}
-          max={200}
-          step={1}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Font Weight</Label>
-        <Select
-          value={el.fontWeight}
-          onValueChange={(value) => onUpdate({ fontWeight: value as 'normal' | 'bold' })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="normal">Normal</SelectItem>
-            <SelectItem value="bold">Bold</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Text Align</Label>
-        <Select
-          value={el.textAlign}
-          onValueChange={(value) => onUpdate({ textAlign: value as 'left' | 'center' | 'right' })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="left">Left</SelectItem>
-            <SelectItem value="center">Center</SelectItem>
-            <SelectItem value="right">Right</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="space-y-2">
-        <Label>Text Color</Label>
-        <Input
-          type="color"
-          value={el.color}
-          onChange={(e) => onUpdate({ color: e.target.value })}
-          className="h-10 cursor-pointer"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Background Color</Label>
-        <Input
-          type="color"
-          value={el.backgroundColor}
-          onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
-          className="h-10 cursor-pointer"
-        />
-      </div>
-    </>
+    <div className="space-y-4">
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            Content
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <Textarea
+            value={el.content}
+            onChange={(e) => onUpdate({ content: e.target.value })}
+            placeholder="Enter your text..."
+            rows={3}
+            className="resize-none"
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            Typography
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Font Size</Label>
+              <span className="text-xs text-muted-foreground">{el.fontSize}px</span>
+            </div>
+            <Slider
+              value={[el.fontSize]}
+              onValueChange={([value]) => onUpdate({ fontSize: value })}
+              min={12}
+              max={200}
+              step={1}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Weight</Label>
+              <Select
+                value={el.fontWeight}
+                onValueChange={(value) => onUpdate({ fontWeight: value as 'normal' | 'bold' })}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="bold">Bold</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Align</Label>
+              <Select
+                value={el.textAlign}
+                onValueChange={(value) => onUpdate({ textAlign: value as 'left' | 'center' | 'right' })}
+              >
+                <SelectTrigger className="h-8">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="left">Left</SelectItem>
+                  <SelectItem value="center">Center</SelectItem>
+                  <SelectItem value="right">Right</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Colors
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Text</Label>
+              <div className="flex gap-2">
+                <div 
+                  className="w-8 h-8 rounded border cursor-pointer" 
+                  style={{ backgroundColor: el.color }}
+                />
+                <Input
+                  type="color"
+                  value={el.color}
+                  onChange={(e) => onUpdate({ color: e.target.value })}
+                  className="h-8 w-full cursor-pointer"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Background</Label>
+              <div className="flex gap-2">
+                <div 
+                  className="w-8 h-8 rounded border cursor-pointer" 
+                  style={{ backgroundColor: el.backgroundColor }}
+                />
+                <Input
+                  type="color"
+                  value={el.backgroundColor === 'transparent' ? '#ffffff' : el.backgroundColor}
+                  onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
+                  className="h-8 w-full cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 
   const renderTickerProperties = (el: TickerElement) => (
-    <>
-      <div className="space-y-2">
-        <Label>Ticker Text</Label>
-        <Textarea
-          value={el.text}
-          onChange={(e) => onUpdate({ text: e.target.value })}
-          placeholder="Enter scrolling text..."
-          rows={2}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Speed: {el.speed}</Label>
-        <Slider
-          value={[el.speed]}
-          onValueChange={([value]) => onUpdate({ speed: value })}
-          min={1}
-          max={10}
-          step={1}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Font Size: {el.fontSize}px</Label>
-        <Slider
-          value={[el.fontSize]}
-          onValueChange={([value]) => onUpdate({ fontSize: value })}
-          min={12}
-          max={100}
-          step={1}
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Text Color</Label>
-        <Input
-          type="color"
-          value={el.color}
-          onChange={(e) => onUpdate({ color: e.target.value })}
-          className="h-10 cursor-pointer"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>Background Color</Label>
-        <Input
-          type="color"
-          value={el.backgroundColor}
-          onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
-          className="h-10 cursor-pointer"
-        />
-      </div>
-    </>
+    <div className="space-y-4">
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Type className="h-4 w-4" />
+            Content
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <Textarea
+            value={el.text}
+            onChange={(e) => onUpdate({ text: e.target.value })}
+            placeholder="Enter scrolling text..."
+            rows={2}
+            className="resize-none"
+          />
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            Animation
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Speed</Label>
+              <span className="text-xs text-muted-foreground">{el.speed}x</span>
+            </div>
+            <Slider
+              value={[el.speed]}
+              onValueChange={([value]) => onUpdate({ speed: value })}
+              min={1}
+              max={10}
+              step={1}
+            />
+          </div>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Font Size</Label>
+              <span className="text-xs text-muted-foreground">{el.fontSize}px</span>
+            </div>
+            <Slider
+              value={[el.fontSize]}
+              onValueChange={([value]) => onUpdate({ fontSize: value })}
+              min={12}
+              max={100}
+              step={1}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Palette className="h-4 w-4" />
+            Colors
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Text</Label>
+              <Input
+                type="color"
+                value={el.color}
+                onChange={(e) => onUpdate({ color: e.target.value })}
+                className="h-8 cursor-pointer"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs">Background</Label>
+              <Input
+                type="color"
+                value={el.backgroundColor}
+                onChange={(e) => onUpdate({ backgroundColor: e.target.value })}
+                className="h-8 cursor-pointer"
+              />
+            </div>
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 
   const renderVideoProperties = (el: VideoElement) => (
-    <>
-      <div className="space-y-2">
-        <Label>Video URL</Label>
-        <Input
-          value={el.src}
-          onChange={(e) => onUpdate({ src: e.target.value })}
-          placeholder="Paste video URL..."
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <Label>Auto Play</Label>
-        <Switch
-          checked={el.autoPlay}
-          onCheckedChange={(checked) => onUpdate({ autoPlay: checked })}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <Label>Loop</Label>
-        <Switch
-          checked={el.loop}
-          onCheckedChange={(checked) => onUpdate({ loop: checked })}
-        />
-      </div>
-      <div className="flex items-center justify-between">
-        <Label>Muted</Label>
-        <Switch
-          checked={el.muted}
-          onCheckedChange={(checked) => onUpdate({ muted: checked })}
-        />
-      </div>
-    </>
+    <div className="space-y-4">
+      <ImageCropPanel element={el} onUpdate={onUpdate} />
+      
+      <Collapsible defaultOpen>
+        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+          <span className="flex items-center gap-2">
+            <Settings2 className="h-4 w-4" />
+            Playback
+          </span>
+          <ChevronDown className="h-4 w-4" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="space-y-3 pt-2">
+          <div className="flex items-center justify-between py-1">
+            <Label className="text-sm">Auto Play</Label>
+            <Switch
+              checked={el.autoPlay}
+              onCheckedChange={(checked) => onUpdate({ autoPlay: checked })}
+            />
+          </div>
+          <div className="flex items-center justify-between py-1">
+            <Label className="text-sm">Loop</Label>
+            <Switch
+              checked={el.loop}
+              onCheckedChange={(checked) => onUpdate({ loop: checked })}
+            />
+          </div>
+          <div className="flex items-center justify-between py-1">
+            <Label className="text-sm">Muted</Label>
+            <Switch
+              checked={el.muted}
+              onCheckedChange={(checked) => onUpdate({ muted: checked })}
+            />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
+    </div>
   );
 
   const renderProperties = () => {
     switch (element.type) {
       case 'image':
-        return renderImageProperties(element as ImageElement);
+        return <ImageCropPanel element={element as ImageElement} onUpdate={onUpdate} />;
       case 'text':
         return renderTextProperties(element as TextElement);
       case 'ticker':
         return renderTickerProperties(element as TickerElement);
       case 'video':
         return renderVideoProperties(element as VideoElement);
+      case 'slideshow':
+        return <SlideshowPanel element={element as SlideshowElement} onUpdate={onUpdate} />;
       default:
         return <p className="text-sm text-muted-foreground">No properties available</p>;
     }
@@ -244,76 +336,98 @@ export function PropertyPanel({
 
   return (
     <div className="h-full flex flex-col bg-card border-l">
-      <div className="p-4 border-b">
-        <h2 className="font-semibold text-lg capitalize">{element.type} Properties</h2>
+      {/* Header */}
+      <div className="p-4 border-b bg-gradient-to-r from-primary/5 to-transparent">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+            <Icon className="h-4 w-4 text-primary" />
+          </div>
+          <div>
+            <h2 className="font-semibold capitalize">{element.type}</h2>
+            <p className="text-xs text-muted-foreground">Edit properties</p>
+          </div>
+        </div>
       </div>
       
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4">
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4">
           {/* Position & Size */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs">X</Label>
-              <Input
-                type="number"
-                value={Math.round(element.position.x)}
-                onChange={(e) => onUpdate({ position: { ...element.position, x: Number(e.target.value) } })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Y</Label>
-              <Input
-                type="number"
-                value={Math.round(element.position.y)}
-                onChange={(e) => onUpdate({ position: { ...element.position, y: Number(e.target.value) } })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Width</Label>
-              <Input
-                type="number"
-                value={Math.round(element.size.width)}
-                onChange={(e) => onUpdate({ size: { ...element.size, width: Number(e.target.value) } })}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Height</Label>
-              <Input
-                type="number"
-                value={Math.round(element.size.height)}
-                onChange={(e) => onUpdate({ size: { ...element.size, height: Number(e.target.value) } })}
-              />
-            </div>
-          </div>
+          <Collapsible defaultOpen>
+            <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
+              <span className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4" />
+                Transform
+              </span>
+              <ChevronDown className="h-4 w-4" />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">X</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(element.position.x)}
+                    onChange={(e) => onUpdate({ position: { ...element.position, x: Number(e.target.value) } })}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Y</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(element.position.y)}
+                    onChange={(e) => onUpdate({ position: { ...element.position, y: Number(e.target.value) } })}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Width</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(element.size.width)}
+                    onChange={(e) => onUpdate({ size: { ...element.size, width: Number(e.target.value) } })}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Height</Label>
+                  <Input
+                    type="number"
+                    value={Math.round(element.size.height)}
+                    onChange={(e) => onUpdate({ size: { ...element.size, height: Number(e.target.value) } })}
+                    className="h-8"
+                  />
+                </div>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <div className="h-px bg-border" />
 
           {/* Type-specific properties */}
           {renderProperties()}
-
-          <div className="h-px bg-border" />
-
-          {/* Actions */}
-          <div className="space-y-2">
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={onBringToFront}>
-                <ArrowUp className="h-4 w-4 mr-1" /> Front
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={onSendToBack}>
-                <ArrowDown className="h-4 w-4 mr-1" /> Back
-              </Button>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1" onClick={onDuplicate}>
-                <Copy className="h-4 w-4 mr-1" /> Duplicate
-              </Button>
-              <Button variant="destructive" size="sm" className="flex-1" onClick={onDelete}>
-                <Trash2 className="h-4 w-4 mr-1" /> Delete
-              </Button>
-            </div>
-          </div>
         </div>
       </ScrollArea>
+
+      {/* Actions Footer */}
+      <div className="p-3 border-t bg-muted/30 space-y-2">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1 h-8" onClick={onBringToFront}>
+            <ArrowUp className="h-3.5 w-3.5 mr-1" /> Front
+          </Button>
+          <Button variant="outline" size="sm" className="flex-1 h-8" onClick={onSendToBack}>
+            <ArrowDown className="h-3.5 w-3.5 mr-1" /> Back
+          </Button>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" className="flex-1 h-8" onClick={onDuplicate}>
+            <Copy className="h-3.5 w-3.5 mr-1" /> Duplicate
+          </Button>
+          <Button variant="destructive" size="sm" className="flex-1 h-8" onClick={onDelete}>
+            <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
