@@ -94,12 +94,13 @@ export default function Display() {
       width: `${(element.size.width / currentRatio.width) * 100}%`,
       height: `${(element.size.height / currentRatio.height) * 100}%`,
       zIndex: element.zIndex,
+      inset: 0,
     };
 
     switch (element.type) {
       case 'image':
         return element.src ? (
-          <div key={element.id} style={style} className="overflow-hidden">
+          <div style={style} className="overflow-hidden">
             <img
               src={element.src}
               alt={element.alt || ''}
@@ -111,7 +112,7 @@ export default function Display() {
 
       case 'video':
         return element.src ? (
-          <div key={element.id} style={style} className="overflow-hidden">
+          <div style={style} className="overflow-hidden">
             <video
               src={element.src}
               className="w-full h-full object-cover"
@@ -126,7 +127,6 @@ export default function Display() {
       case 'text':
         return (
           <div
-            key={element.id}
             style={{
               ...style,
               fontSize: `${(element.fontSize / currentRatio.height) * 100}vh`,
@@ -152,7 +152,6 @@ export default function Display() {
         const animationDuration = 20 / element.speed;
         return (
           <div
-            key={element.id}
             style={{
               ...style,
               fontSize: `${(element.fontSize / currentRatio.height) * 100}vh`,
@@ -176,7 +175,7 @@ export default function Display() {
 
       case 'slideshow':
         return (
-          <div key={element.id} style={style} className="overflow-hidden">
+          <div style={style} className="overflow-hidden">
             <SlideshowDisplay element={element} />
           </div>
         );
@@ -189,7 +188,10 @@ export default function Display() {
   if (loading) {
     return (
       <div className="fixed inset-0 bg-black flex items-center justify-center">
-        <div className="text-white text-2xl">Loading display...</div>
+        <div className="flex flex-col items-center gap-4 animate-pulse">
+          <div className="w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+          <div className="text-white text-xl font-medium">Loading display...</div>
+        </div>
       </div>
     );
   }
@@ -207,18 +209,31 @@ export default function Display() {
 
   return (
     <div 
-      className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden animate-fade-in"
       style={{ cursor: 'none' }}
     >
       <div
-        className="relative bg-background w-full h-full"
+        className="relative bg-background w-full h-full animate-scale-in"
         style={{
           aspectRatio: `${currentRatio.width}/${currentRatio.height}`,
           maxWidth: '100vw',
           maxHeight: '100vh',
+          animationDelay: '0.2s',
+          animationFillMode: 'both',
         }}
       >
-        {elements.map(renderElement)}
+        {elements.map((element, index) => (
+          <div
+            key={element.id}
+            className="animate-fade-in"
+            style={{
+              animationDelay: `${0.3 + index * 0.1}s`,
+              animationFillMode: 'both',
+            }}
+          >
+            {renderElement(element)}
+          </div>
+        ))}
       </div>
     </div>
   );
