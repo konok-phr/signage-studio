@@ -7,7 +7,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Editor from "./pages/Editor";
 import Display from "./pages/Display";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
@@ -19,7 +21,15 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/admin" element={<Editor />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute>
+                <Editor />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="/display/:id" element={<Display />} />
           {/* Legacy player route */}
           <Route path="/player/:id" element={<Display />} />

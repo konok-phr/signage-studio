@@ -13,6 +13,7 @@ import { EditorToolbar } from '@/components/signage/EditorToolbar';
 import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
 import { PublishModal } from '@/components/signage/PublishModal';
 import { useSignageProject } from '@/hooks/useSignageProject';
+import { useAuth } from '@/hooks/useAuth';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 
 // Generate a random 6-character code
@@ -27,6 +28,7 @@ function generatePublishCode(): string {
 
 export default function Editor() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -144,6 +146,11 @@ export default function Editor() {
   };
 
   const handleSave = async () => {
+    if (!user) {
+      toast.error('You must be signed in to save projects');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const projectData = {
@@ -152,6 +159,7 @@ export default function Editor() {
         canvas_width: currentRatio.width,
         canvas_height: currentRatio.height,
         elements: JSON.parse(JSON.stringify(elements)) as Json,
+        user_id: user.id,
       };
 
       if (projectId) {
@@ -182,6 +190,11 @@ export default function Editor() {
   };
 
   const handlePublish = async () => {
+    if (!user) {
+      toast.error('You must be signed in to publish projects');
+      return;
+    }
+
     setIsSaving(true);
     try {
       const code = publishCode || generatePublishCode();
@@ -195,6 +208,7 @@ export default function Editor() {
         is_published: true,
         published_at: new Date().toISOString(),
         publish_code: code,
+        user_id: user.id,
       };
 
       let savedProjectId = projectId;
