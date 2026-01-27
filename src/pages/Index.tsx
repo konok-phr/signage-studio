@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Monitor, Play, Settings, Tv2, ArrowRight } from 'lucide-react';
+import { Play, Settings, Tv2, Sparkles } from 'lucide-react';
 
 export default function Index() {
   const navigate = useNavigate();
@@ -38,7 +37,6 @@ export default function Index() {
         return;
       }
 
-      // Navigate to fullscreen player
       navigate(`/display/${data.id}`);
     } catch (error) {
       console.error('Load error:', error);
@@ -49,109 +47,151 @@ export default function Index() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/30 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex flex-col overflow-hidden">
+      {/* Animated background elements */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
       {/* Header */}
-      <header className="p-4 flex items-center justify-between border-b bg-card/50 backdrop-blur-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-            <Tv2 className="h-5 w-5 text-primary-foreground" />
+      <header className="relative z-10 p-6 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg shadow-primary/25">
+            <Tv2 className="h-6 w-6 text-white" />
           </div>
-          <span className="font-bold text-xl">SignageHub</span>
+          <div>
+            <span className="font-bold text-xl text-white">SignageHub</span>
+            <p className="text-xs text-slate-400">Digital Display System</p>
+          </div>
         </div>
-        <Button variant="outline" onClick={() => navigate('/admin')} className="gap-2">
+        <Button 
+          variant="outline" 
+          onClick={() => navigate('/admin')} 
+          className="gap-2 bg-white/5 border-white/10 text-white hover:bg-white/10 hover:text-white"
+        >
           <Settings className="h-4 w-4" />
           Admin Panel
         </Button>
       </header>
 
-      {/* Hero Section */}
-      <main className="flex-1 flex items-center justify-center p-6">
+      {/* Main Content */}
+      <main className="relative z-10 flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-4xl mx-auto">
+          {/* Hero Text */}
           <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              Digital Signage Display
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-primary mb-6">
+              <Sparkles className="h-4 w-4" />
+              <span className="text-sm font-medium">Digital Signage Made Simple</span>
+            </div>
+            <h1 className="text-4xl md:text-6xl font-bold mb-4 text-white">
+              Power Your
+              <span className="bg-gradient-to-r from-primary via-blue-400 to-primary bg-clip-text text-transparent"> Displays</span>
             </h1>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Enter your display code to load your signage content on this screen
+            <p className="text-lg text-slate-400 max-w-xl mx-auto">
+              Enter your unique display code to instantly load your custom signage content
             </p>
           </div>
 
-          {/* Display Monitor Mockup */}
-          <div className="relative mx-auto max-w-2xl mb-12">
-            <div className="aspect-video bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl shadow-2xl border-8 border-slate-700 overflow-hidden">
-              <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-                <div className="text-center space-y-4">
-                  <Monitor className="h-20 w-20 text-primary/50 mx-auto" />
-                  <div>
-                    <p className="text-xl font-medium text-foreground/80">Ready to Display</p>
-                    <p className="text-sm text-muted-foreground">Enter your code below</p>
+          {/* Monitor Display with Input Inside */}
+          <div className="relative mx-auto max-w-2xl">
+            {/* Monitor Frame */}
+            <div className="relative">
+              {/* Screen bezel */}
+              <div className="bg-gradient-to-b from-slate-700 to-slate-800 rounded-3xl p-3 shadow-2xl">
+                {/* Inner bezel */}
+                <div className="bg-gradient-to-b from-slate-800 to-slate-900 rounded-2xl p-1">
+                  {/* Screen */}
+                  <div className="aspect-video bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl overflow-hidden relative">
+                    {/* Screen content */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center p-8">
+                      {/* Decorative lines */}
+                      <div className="absolute inset-0 opacity-10">
+                        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                        <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent" />
+                      </div>
+                      
+                      {/* Scan lines effect */}
+                      <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] pointer-events-none" />
+                      
+                      {/* Content */}
+                      <div className="relative z-10 w-full max-w-sm space-y-6">
+                        <div className="text-center">
+                          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-primary/20 mb-4">
+                            <Play className="h-8 w-8 text-primary" />
+                          </div>
+                          <h2 className="text-xl font-semibold text-white mb-2">Enter Display Code</h2>
+                          <p className="text-sm text-slate-500">6-character code from your admin panel</p>
+                        </div>
+                        
+                        <div className="space-y-4">
+                          <Input
+                            value={code}
+                            onChange={(e) => setCode(e.target.value.toUpperCase())}
+                            placeholder="ABC123"
+                            className="text-center text-3xl font-mono tracking-[0.5em] h-16 bg-slate-800/50 border-slate-700 text-white placeholder:text-slate-600 focus:border-primary focus:ring-primary/20"
+                            maxLength={6}
+                            onKeyDown={(e) => e.key === 'Enter' && handleLoadDisplay()}
+                          />
+                          
+                          <Button 
+                            onClick={handleLoadDisplay} 
+                            className="w-full h-12 text-lg gap-2 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/25"
+                            disabled={isLoading || !code.trim()}
+                          >
+                            {isLoading ? (
+                              <div className="flex items-center gap-2">
+                                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                Loading...
+                              </div>
+                            ) : (
+                              <>
+                                <Play className="h-5 w-5" />
+                                Launch Display
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* Screen reflection */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
                   </div>
                 </div>
               </div>
+              
+              {/* Monitor Stand */}
+              <div className="flex flex-col items-center">
+                <div className="w-20 h-12 bg-gradient-to-b from-slate-700 to-slate-800 rounded-b-lg" />
+                <div className="w-40 h-3 bg-gradient-to-b from-slate-600 to-slate-700 rounded-full shadow-lg" />
+              </div>
             </div>
-            {/* Stand */}
-            <div className="w-32 h-4 bg-slate-700 mx-auto rounded-b-lg" />
-            <div className="w-48 h-2 bg-slate-600 mx-auto rounded-full mt-1" />
+            
+            {/* Ambient glow under monitor */}
+            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 w-3/4 h-20 bg-primary/20 blur-3xl rounded-full" />
           </div>
 
-          {/* Code Input Card */}
-          <Card className="max-w-md mx-auto shadow-lg border-2">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                <div className="text-center">
-                  <h2 className="text-lg font-semibold mb-1">Enter Display Code</h2>
-                  <p className="text-sm text-muted-foreground">
-                    Get this code from your admin panel after publishing
-                  </p>
-                </div>
-                
-                <Input
-                  value={code}
-                  onChange={(e) => setCode(e.target.value.toUpperCase())}
-                  placeholder="e.g., ABC123"
-                  className="text-center text-2xl font-mono tracking-widest h-14 uppercase"
-                  maxLength={8}
-                  onKeyDown={(e) => e.key === 'Enter' && handleLoadDisplay()}
-                />
-                
-                <Button 
-                  onClick={handleLoadDisplay} 
-                  className="w-full h-12 text-lg gap-2"
-                  disabled={isLoading || !code.trim()}
-                >
-                  {isLoading ? (
-                    'Loading...'
-                  ) : (
-                    <>
-                      <Play className="h-5 w-5" />
-                      Load Display
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Quick Actions */}
-          <div className="mt-12 text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Need to create or manage displays?
+          {/* Bottom hint */}
+          <div className="mt-16 text-center">
+            <p className="text-sm text-slate-500">
+              Need to create displays? 
+              <Button 
+                variant="link" 
+                onClick={() => navigate('/admin')}
+                className="text-primary hover:text-primary/80 px-1"
+              >
+                Open Admin Panel →
+              </Button>
             </p>
-            <Button 
-              variant="ghost" 
-              onClick={() => navigate('/admin')}
-              className="gap-2"
-            >
-              Go to Admin Panel
-              <ArrowRight className="h-4 w-4" />
-            </Button>
           </div>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="p-4 text-center text-sm text-muted-foreground border-t">
-        <p>Digital Signage Management System</p>
+      <footer className="relative z-10 p-6 text-center">
+        <p className="text-sm text-slate-600">Digital Signage Management System</p>
       </footer>
     </div>
   );

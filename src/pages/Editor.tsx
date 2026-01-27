@@ -11,6 +11,7 @@ import { LivePreview } from '@/components/signage/LivePreview';
 import { PropertyPanel } from '@/components/signage/PropertyPanel';
 import { EditorToolbar } from '@/components/signage/EditorToolbar';
 import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
+import { PublishModal } from '@/components/signage/PublishModal';
 import { useSignageProject } from '@/hooks/useSignageProject';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 
@@ -27,6 +28,7 @@ function generatePublishCode(): string {
 export default function Editor() {
   const navigate = useNavigate();
   const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [publishCode, setPublishCode] = useState<string | null>(null);
 
@@ -37,7 +39,6 @@ export default function Editor() {
       },
     })
   );
-
   const {
     projectId,
     setProjectId,
@@ -219,15 +220,7 @@ export default function Editor() {
 
       setIsPublished(true);
       setPublishCode(code);
-      
-      await navigator.clipboard.writeText(code);
-      toast.success(
-        <div className="space-y-1">
-          <p className="font-medium">Published successfully!</p>
-          <p className="text-sm">Display code: <span className="font-mono font-bold">{code}</span></p>
-          <p className="text-xs text-muted-foreground">Code copied to clipboard</p>
-        </div>
-      );
+      setPublishModalOpen(true);
     } catch (error) {
       console.error('Publish error:', error);
       toast.error('Failed to publish project');
@@ -301,6 +294,15 @@ export default function Editor() {
           onOpenChange={setTemplatesOpen}
           onSelectTemplate={handleSelectTemplate}
         />
+
+        {publishCode && projectId && (
+          <PublishModal
+            open={publishModalOpen}
+            onOpenChange={setPublishModalOpen}
+            publishCode={publishCode}
+            projectId={projectId}
+          />
+        )}
       </div>
     </DndContext>
   );
