@@ -23,6 +23,7 @@ export type Database = {
           id: string
           is_published: boolean
           name: string
+          publish_code: string | null
           published_at: string | null
           ratio: string
           updated_at: string
@@ -35,6 +36,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name?: string
+          publish_code?: string | null
           published_at?: string | null
           ratio?: string
           updated_at?: string
@@ -47,6 +49,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           name?: string
+          publish_code?: string | null
           published_at?: string | null
           ratio?: string
           updated_at?: string

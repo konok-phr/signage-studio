@@ -1,6 +1,8 @@
 import { useRef, useState, useEffect } from 'react';
+import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { CanvasElement as CanvasElementType, AspectRatio } from '@/types/signage';
 import { CanvasElement } from './CanvasElement';
+import { DroppableCanvas } from './DroppableCanvas';
 import { cn } from '@/lib/utils';
 import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -106,12 +108,8 @@ export function DesignCanvas({
         tabIndex={0}
         onKeyDown={handleKeyDown}
       >
-        <div
-          className={cn(
-            'relative bg-background shadow-xl border-2 border-border/50 rounded-sm',
-            'transition-all duration-200'
-          )}
-          style={{
+        <DroppableCanvas
+          canvasStyle={{
             width: ratio.width * scale,
             height: ratio.height * scale,
           }}
@@ -164,12 +162,12 @@ export function DesignCanvas({
                 </div>
                 <div>
                   <p className="text-lg font-medium text-foreground/80">Your canvas is empty</p>
-                  <p className="text-sm text-muted-foreground">Add elements from the left panel or use a template</p>
+                  <p className="text-sm text-muted-foreground">Drag elements here or click them in the sidebar</p>
                 </div>
               </div>
             </div>
           )}
-        </div>
+        </DroppableCanvas>
       </div>
     </div>
   );
