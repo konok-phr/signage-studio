@@ -26,6 +26,23 @@ function generatePublishCode(): string {
   return code;
 }
 
+// Generate a unique publish code with collision detection
+async function generateUniquePublishCode(): Promise<string> {
+  const maxAttempts = 10;
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = generatePublishCode();
+    const { data } = await supabase
+      .from('signage_projects')
+      .select('id')
+      .eq('publish_code', code)
+      .maybeSingle();
+    
+    if (!data) return code;
+  }
+  throw new Error('Failed to generate unique publish code. Please try again.');
+}
+
 export default function Editor() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -197,7 +214,7 @@ export default function Editor() {
 
     setIsSaving(true);
     try {
-      const code = publishCode || generatePublishCode();
+      const code = publishCode || await generateUniquePublishCode();
       
       const projectData = {
         name: projectName,
