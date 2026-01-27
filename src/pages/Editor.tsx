@@ -17,12 +17,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Generate a random 6-character code
+// Generate a cryptographically random 12-character code
+// Using crypto.getRandomValues for better entropy (~60 bits with 32 chars * 12 positions)
 function generatePublishCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const randomValues = new Uint8Array(12);
+  crypto.getRandomValues(randomValues);
   let code = '';
-  for (let i = 0; i < 6; i++) {
-    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  for (let i = 0; i < 12; i++) {
+    code += chars.charAt(randomValues[i] % chars.length);
   }
   return code;
 }
