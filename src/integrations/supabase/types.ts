@@ -27,6 +27,7 @@ export type Database = {
           published_at: string | null
           ratio: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           canvas_height?: number
@@ -40,6 +41,7 @@ export type Database = {
           published_at?: string | null
           ratio?: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           canvas_height?: number
@@ -53,6 +55,7 @@ export type Database = {
           published_at?: string | null
           ratio?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }

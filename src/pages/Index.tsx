@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
-import { Play, Settings, Tv2, Sparkles } from 'lucide-react';
+import { Play, Settings, Tv2, Sparkles, LogIn } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Index() {
   const navigate = useNavigate();
+  const { isAuthenticated, signOut, loading } = useAuth();
   const [code, setCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -46,6 +48,11 @@ export default function Index() {
     }
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    toast.success('Signed out successfully');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col overflow-hidden">
       {/* Animated background elements */}
@@ -66,14 +73,40 @@ export default function Index() {
             <p className="text-xs text-muted-foreground">Digital Display System</p>
           </div>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate('/admin')} 
-          className="gap-2"
-        >
-          <Settings className="h-4 w-4" />
-          Admin Panel
-        </Button>
+        <div className="flex items-center gap-2">
+          {!loading && (
+            <>
+              {isAuthenticated ? (
+                <>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => navigate('/admin')} 
+                    className="gap-2"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Admin Panel
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleSignOut}
+                    className="gap-2"
+                  >
+                    Sign Out
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="outline" 
+                  onClick={() => navigate('/auth')} 
+                  className="gap-2"
+                >
+                  <LogIn className="h-4 w-4" />
+                  Sign In
+                </Button>
+              )}
+            </>
+          )}
+        </div>
       </header>
 
       {/* Main Content */}
