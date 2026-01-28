@@ -21,11 +21,9 @@ export default function Index() {
 
     setIsLoading(true);
     try {
-      // Use the public view that excludes sensitive user_id field
+      // Use RPC function that requires publish_code for access (prevents enumeration)
       const { data, error } = await supabase
-        .from('signage_projects_public')
-        .select('id')
-        .eq('publish_code', code.trim().toUpperCase())
+        .rpc('get_published_project_by_code', { code: code.trim().toUpperCase() })
         .maybeSingle();
 
       if (error) throw error;
@@ -34,8 +32,6 @@ export default function Index() {
         toast.error('Invalid display code. Please check and try again.');
         return;
       }
-
-      // View already filters for published projects, so no additional check needed
 
       navigate(`/display/${data.id}`);
     } catch (error) {

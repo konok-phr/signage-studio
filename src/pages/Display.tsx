@@ -58,11 +58,9 @@ export default function Display() {
       }
 
       try {
-        // Use the public view that excludes sensitive user_id field
+        // Use RPC function that requires project ID for access (prevents enumeration)
         const { data, error: fetchError } = await supabase
-          .from('signage_projects_public')
-          .select('*')
-          .eq('id', id)
+          .rpc('get_published_project_by_id', { project_id: id })
           .maybeSingle();
 
         if (fetchError) throw fetchError;
