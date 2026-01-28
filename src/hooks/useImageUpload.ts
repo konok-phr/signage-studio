@@ -18,13 +18,21 @@ export function useImageUpload() {
       return null;
     }
 
+    // Get current user for user-scoped storage path
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error('You must be authenticated to upload');
+      return null;
+    }
+
     setIsUploading(true);
     setUploadProgress(0);
 
     try {
       const fileExt = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExt}`;
-      const filePath = `images/${fileName}`;
+      // User-scoped path ensures users can only access their own files
+      const filePath = `${user.id}/images/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('signage-media')
