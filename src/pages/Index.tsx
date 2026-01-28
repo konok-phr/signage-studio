@@ -161,16 +161,16 @@ export default function Index() {
                             <Play className="h-8 w-8 text-primary" />
                           </div>
                           <h2 className="text-xl font-semibold text-foreground mb-2">Enter Display Code</h2>
-                          <p className="text-sm text-muted-foreground">12-character code from your admin panel</p>
+                          <p className="text-sm text-muted-foreground">6-character code from your admin panel</p>
                         </div>
                         
                         <div className="space-y-4">
                           <Input
                             value={code}
                             onChange={(e) => setCode(e.target.value.toUpperCase())}
-                            placeholder="ABCD1234EFGH"
-                            className="text-center text-2xl font-mono tracking-[0.3em] h-16 bg-background/80 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/20"
-                            maxLength={12}
+                            placeholder="ABC123"
+                            className="text-center text-2xl font-mono tracking-[0.4em] h-16 bg-background/80 border-border text-foreground placeholder:text-muted-foreground/50 focus:border-primary focus:ring-primary/20"
+                            maxLength={6}
                             onKeyDown={(e) => e.key === 'Enter' && handleLoadDisplay()}
                           />
                           

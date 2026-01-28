@@ -4,7 +4,7 @@ import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { 
   Save, Globe, LayoutTemplate, Trash2, Monitor, Smartphone, Square, Ratio, 
-  Copy, CheckCheck, Home 
+  Copy, CheckCheck, Home, Eye 
 } from 'lucide-react';
 import { ASPECT_RATIOS } from '@/types/signage';
 import { useState } from 'react';
@@ -19,6 +19,7 @@ interface EditorToolbarProps {
   onSave: () => void;
   onPublish: () => void;
   onOpenTemplates: () => void;
+  onOpenPreview: () => void;
   onClearCanvas: () => void;
   isSaving: boolean;
   isPublished: boolean;
@@ -40,6 +41,7 @@ export function EditorToolbar({
   onSave,
   onPublish,
   onOpenTemplates,
+  onOpenPreview,
   onClearCanvas,
   isSaving,
   isPublished,
@@ -126,6 +128,11 @@ export function EditorToolbar({
 
       {/* Actions */}
       <div className="flex items-center gap-2">
+        <Button variant="outline" size="sm" className="h-9 gap-2" onClick={onOpenPreview}>
+          <Eye className="h-4 w-4" />
+          <span className="hidden sm:inline">Preview</span>
+        </Button>
+        
         <Button variant="outline" size="sm" className="h-9 gap-2" onClick={onOpenTemplates}>
           <LayoutTemplate className="h-4 w-4" />
           <span className="hidden sm:inline">Templates</span>

@@ -7,8 +7,8 @@ import { Json } from '@/integrations/supabase/types';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MediaSidebar } from '@/components/signage/MediaSidebar';
 import { DesignCanvas } from '@/components/signage/DesignCanvas';
-import { LivePreview } from '@/components/signage/LivePreview';
 import { PropertyPanel } from '@/components/signage/PropertyPanel';
+import { PreviewModal } from '@/components/signage/PreviewModal';
 import { EditorToolbar } from '@/components/signage/EditorToolbar';
 import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
 import { PublishModal } from '@/components/signage/PublishModal';
@@ -17,14 +17,14 @@ import { useAuth } from '@/hooks/useAuth';
 import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Generate a cryptographically random 12-character code
-// Using crypto.getRandomValues for better entropy (~60 bits with 32 chars * 12 positions)
+// Generate a cryptographically random 6-character code
+// Using crypto.getRandomValues for better entropy (~30 bits with 32 chars * 6 positions)
 function generatePublishCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
-  const randomValues = new Uint8Array(12);
+  const randomValues = new Uint8Array(6);
   crypto.getRandomValues(randomValues);
   let code = '';
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 6; i++) {
     code += chars.charAt(randomValues[i] % chars.length);
   }
   return code;
@@ -55,6 +55,7 @@ export default function Editor() {
   const { user } = useAuth();
   const [templatesOpen, setTemplatesOpen] = useState(false);
   const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const sensors = useSensors(
@@ -300,6 +301,7 @@ export default function Editor() {
           onSave={handleSave}
           onPublish={handlePublish}
           onOpenTemplates={() => setTemplatesOpen(true)}
+          onOpenPreview={() => setPreviewModalOpen(true)}
           onClearCanvas={clearCanvas}
           isSaving={isSaving}
           isPublished={isPublished}
@@ -313,7 +315,7 @@ export default function Editor() {
           
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={50} minSize={30}>
+          <ResizablePanel defaultSize={60} minSize={40}>
             <DesignCanvas
               ratio={currentRatio}
               elements={elements}
@@ -326,26 +328,16 @@ export default function Editor() {
           
           <ResizableHandle withHandle />
           
-          {/* Right panel: Preview + Properties in vertical split */}
-          <ResizablePanel defaultSize={35} minSize={25} maxSize={45}>
-            <ResizablePanelGroup direction="vertical">
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <LivePreview ratio={currentRatio} elements={elements} />
-              </ResizablePanel>
-              
-              <ResizableHandle withHandle />
-              
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <PropertyPanel
-                  element={selectedElement}
-                  onUpdate={(updates) => selectedElementId && updateElement(selectedElementId, updates)}
-                  onDelete={() => selectedElementId && deleteElement(selectedElementId)}
-                  onDuplicate={() => selectedElementId && duplicateElement(selectedElementId)}
-                  onBringToFront={() => selectedElementId && bringToFront(selectedElementId)}
-                  onSendToBack={() => selectedElementId && sendToBack(selectedElementId)}
-                />
-              </ResizablePanel>
-            </ResizablePanelGroup>
+          {/* Right panel: Full Properties Panel */}
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+            <PropertyPanel
+              element={selectedElement}
+              onUpdate={(updates) => selectedElementId && updateElement(selectedElementId, updates)}
+              onDelete={() => selectedElementId && deleteElement(selectedElementId)}
+              onDuplicate={() => selectedElementId && duplicateElement(selectedElementId)}
+              onBringToFront={() => selectedElementId && bringToFront(selectedElementId)}
+              onSendToBack={() => selectedElementId && sendToBack(selectedElementId)}
+            />
           </ResizablePanel>
         </ResizablePanelGroup>
 
@@ -363,6 +355,13 @@ export default function Editor() {
             projectId={projectId}
           />
         )}
+
+        <PreviewModal
+          open={previewModalOpen}
+          onOpenChange={setPreviewModalOpen}
+          ratio={currentRatio}
+          elements={elements}
+        />
       </div>
     </DndContext>
   );
