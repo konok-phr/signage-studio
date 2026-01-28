@@ -19,7 +19,7 @@ export function ImageCropPanel({ element, onUpdate }: ImageCropPanelProps) {
   const [urlInput, setUrlInput] = useState(element.src || '');
   const [sourceMode, setSourceMode] = useState<'upload' | 'url'>('upload');
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { uploadImage, isUploading, uploadProgress } = useImageUpload();
+  const { uploadImage, uploadVideo, isUploading, uploadProgress } = useImageUpload();
 
   const isImage = element.type === 'image';
   const imageElement = element as ImageElement;
@@ -34,7 +34,8 @@ export function ImageCropPanel({ element, onUpdate }: ImageCropPanelProps) {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const url = await uploadImage(file);
+    // Use appropriate upload function based on element type
+    const url = isImage ? await uploadImage(file) : await uploadVideo(file);
     if (url) {
       onUpdate({ src: url });
       setUrlInput(url);
