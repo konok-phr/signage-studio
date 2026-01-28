@@ -30,6 +30,13 @@ export function DesignCanvas({
   const [autoScale, setAutoScale] = useState(1);
   const [manualZoom, setManualZoom] = useState(100);
 
+  // Auto-focus canvas when element is selected for keyboard navigation
+  useEffect(() => {
+    if (selectedElementId && containerRef.current) {
+      containerRef.current.focus();
+    }
+  }, [selectedElementId]);
+
   useEffect(() => {
     const updateScale = () => {
       if (containerRef.current) {
@@ -136,9 +143,10 @@ export function DesignCanvas({
       {/* Canvas Area */}
       <div 
         ref={containerRef}
-        className="flex-1 flex items-center justify-center p-6 overflow-auto"
+        className="flex-1 flex items-center justify-center p-6 overflow-auto outline-none"
         tabIndex={0}
         onKeyDown={handleKeyDown}
+        onClick={() => containerRef.current?.focus()}
       >
         <DroppableCanvas
           canvasStyle={{
