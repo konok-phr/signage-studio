@@ -3,18 +3,24 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
+type MediaType = 'image' | 'video';
+
 export function useImageUpload() {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const uploadImage = async (file: File): Promise<string | null> => {
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
+  const uploadMedia = async (file: File, type: MediaType = 'image'): Promise<string | null> => {
+    const isImage = type === 'image';
+    const validPrefix = isImage ? 'image/' : 'video/';
+    
+    if (!file.type.startsWith(validPrefix)) {
+      toast.error(`Please select a ${type} file`);
       return null;
     }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Image must be less than 10MB');
+    const maxSize = isImage ? 10 * 1024 * 1024 : 100 * 1024 * 1024; // 10MB for images, 100MB for videos
+    if (file.size > maxSize) {
+      toast.error(`${isImage ? 'Image' : 'Video'} must be less than ${isImage ? '10MB' : '100MB'}`);
       return null;
     }
 
@@ -32,7 +38,8 @@ export function useImageUpload() {
       const fileExt = file.name.split('.').pop();
       const fileName = `${uuidv4()}.${fileExt}`;
       // User-scoped path ensures users can only access their own files
-      const filePath = `${user.id}/images/${fileName}`;
+      const folder = isImage ? 'images' : 'videos';
+      const filePath = `${user.id}/${folder}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('signage-media')
@@ -48,15 +55,24 @@ export function useImageUpload() {
         .getPublicUrl(filePath);
 
       setUploadProgress(100);
-      toast.success('Image uploaded successfully');
+      toast.success(`${isImage ? 'Image' : 'Video'} uploaded successfully`);
       return publicUrl;
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload image');
+      toast.error(`Failed to upload ${type}`);
       return null;
     } finally {
       setIsUploading(false);
     }
+  };
+
+  // Legacy method for backwards compatibility
+  const uploadImage = async (file: File): Promise<string | null> => {
+    return uploadMedia(file, 'image');
+  };
+
+  const uploadVideo = async (file: File): Promise<string | null> => {
+    return uploadMedia(file, 'video');
   };
 
   const uploadMultipleImages = async (files: FileList): Promise<string[]> => {
@@ -73,6 +89,8 @@ export function useImageUpload() {
 
   return {
     uploadImage,
+    uploadVideo,
+    uploadMedia,
     uploadMultipleImages,
     isUploading,
     uploadProgress,

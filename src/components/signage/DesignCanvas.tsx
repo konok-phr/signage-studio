@@ -57,11 +57,43 @@ export function DesignCanvas({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!selectedElementId) return;
+    
+    const selectedElement = elements.find(el => el.id === selectedElementId);
+    if (!selectedElement) return;
+
+    // Delete element
     if (e.key === 'Delete' || e.key === 'Backspace') {
-      if (selectedElementId) {
-        onDeleteElement(selectedElementId);
-      }
+      onDeleteElement(selectedElementId);
+      return;
     }
+
+    // Arrow key movement
+    const moveAmount = e.shiftKey ? 10 : 1; // Hold Shift for larger movements
+    let newPosition = { ...selectedElement.position };
+
+    switch (e.key) {
+      case 'ArrowUp':
+        e.preventDefault();
+        newPosition.y = Math.max(0, selectedElement.position.y - moveAmount);
+        break;
+      case 'ArrowDown':
+        e.preventDefault();
+        newPosition.y = selectedElement.position.y + moveAmount;
+        break;
+      case 'ArrowLeft':
+        e.preventDefault();
+        newPosition.x = Math.max(0, selectedElement.position.x - moveAmount);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        newPosition.x = selectedElement.position.x + moveAmount;
+        break;
+      default:
+        return;
+    }
+
+    onUpdateElement(selectedElementId, { position: newPosition });
   };
 
   const handleZoomIn = () => setManualZoom(prev => Math.min(prev + 10, 150));
