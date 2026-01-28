@@ -92,7 +92,6 @@ export default function Display() {
       width: `${(element.size.width / currentRatio.width) * 100}%`,
       height: `${(element.size.height / currentRatio.height) * 100}%`,
       zIndex: element.zIndex,
-      inset: 0,
     };
 
     switch (element.type) {
