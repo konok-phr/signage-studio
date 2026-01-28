@@ -99,7 +99,34 @@ export type Database = {
       }
     }
     Functions: {
-      [_ in never]: never
+      get_published_project_by_code: {
+        Args: { code: string }
+        Returns: {
+          canvas_height: number
+          canvas_width: number
+          elements: Json
+          id: string
+          is_published: boolean
+          name: string
+          publish_code: string
+          published_at: string
+          ratio: string
+        }[]
+      }
+      get_published_project_by_id: {
+        Args: { project_id: string }
+        Returns: {
+          canvas_height: number
+          canvas_width: number
+          elements: Json
+          id: string
+          is_published: boolean
+          name: string
+          publish_code: string
+          published_at: string
+          ratio: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
