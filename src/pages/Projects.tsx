@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/database';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,11 +44,10 @@ export default function Projects() {
   }, [user]);
 
   const fetchProjects = async () => {
+    if (!user) return;
+    
     try {
-      const { data, error } = await supabase
-        .from('signage_projects')
-        .select('id, name, ratio, is_published, publish_code, created_at, updated_at')
-        .order('updated_at', { ascending: false });
+      const { data, error } = await db.getProjectsByUser(user.id);
 
       if (error) throw error;
       setProjects(data || []);
@@ -61,12 +60,11 @@ export default function Projects() {
   };
 
   const handleDelete = async (projectId: string) => {
+    if (!user) return;
+    
     setDeletingId(projectId);
     try {
-      const { error } = await supabase
-        .from('signage_projects')
-        .delete()
-        .eq('id', projectId);
+      const { error } = await db.deleteProject(projectId, user.id);
 
       if (error) throw error;
       

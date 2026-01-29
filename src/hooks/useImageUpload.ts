@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { storage } from '@/lib/storage';
+import { auth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -25,7 +26,7 @@ export function useImageUpload() {
     }
 
     // Get current user for user-scoped storage path
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = await auth.getUser();
     if (!user) {
       toast.error('You must be authenticated to upload');
       return null;
@@ -41,22 +42,16 @@ export function useImageUpload() {
       const folder = isImage ? 'images' : 'videos';
       const filePath = `${user.id}/${folder}/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('signage-media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      const { url, error: uploadError } = await storage.uploadFile(file, filePath, {
+        cacheControl: '3600',
+        upsert: false,
+      });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('signage-media')
-        .getPublicUrl(filePath);
-
       setUploadProgress(100);
       toast.success(`${isImage ? 'Image' : 'Video'} uploaded successfully`);
-      return publicUrl;
+      return url;
     } catch (error) {
       console.error('Upload error:', error);
       toast.error(`Failed to upload ${type}`);

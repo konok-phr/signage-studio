@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
-import { Json } from '@/integrations/supabase/types';
+import { db } from '@/lib/database';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { MediaSidebar } from '@/components/signage/MediaSidebar';
 import { DesignCanvas } from '@/components/signage/DesignCanvas';
@@ -36,13 +35,9 @@ async function generateUniquePublishCode(): Promise<string> {
   
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const code = generatePublishCode();
-    const { data } = await supabase
-      .from('signage_projects')
-      .select('id')
-      .eq('publish_code', code)
-      .maybeSingle();
+    const isUnique = await db.isPublishCodeUnique(code);
     
-    if (!data) return code;
+    if (isUnique) return code;
   }
   throw new Error('Failed to generate unique publish code. Please try again.');
 }
@@ -197,27 +192,20 @@ export default function Editor() {
         ratio,
         canvas_width: currentRatio.width,
         canvas_height: currentRatio.height,
-        elements: JSON.parse(JSON.stringify(elements)) as Json,
+        elements,
         user_id: user.id,
       };
 
       if (projectId) {
-        const { error } = await supabase
-          .from('signage_projects')
-          .update(projectData)
-          .eq('id', projectId);
+        const { error } = await db.updateProject(projectId, user.id, projectData);
         
         if (error) throw error;
         toast.success('Project saved!');
       } else {
-        const { data, error } = await supabase
-          .from('signage_projects')
-          .insert(projectData)
-          .select()
-          .single();
+        const { data, error } = await db.createProject(projectData);
         
         if (error) throw error;
-        setProjectId(data.id);
+        if (data) setProjectId(data.id);
         toast.success('Project created!');
       }
     } catch (error) {
@@ -243,7 +231,7 @@ export default function Editor() {
         ratio,
         canvas_width: currentRatio.width,
         canvas_height: currentRatio.height,
-        elements: JSON.parse(JSON.stringify(elements)) as Json,
+        elements,
         is_published: true,
         published_at: new Date().toISOString(),
         publish_code: code,
@@ -253,22 +241,17 @@ export default function Editor() {
       let savedProjectId = projectId;
 
       if (projectId) {
-        const { error } = await supabase
-          .from('signage_projects')
-          .update(projectData)
-          .eq('id', projectId);
+        const { error } = await db.updateProject(projectId, user.id, projectData);
         
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
-          .from('signage_projects')
-          .insert(projectData)
-          .select()
-          .single();
+        const { data, error } = await db.createProject(projectData);
         
         if (error) throw error;
-        savedProjectId = data.id;
-        setProjectId(data.id);
+        if (data) {
+          savedProjectId = data.id;
+          setProjectId(data.id);
+        }
       }
 
       setIsPublished(true);

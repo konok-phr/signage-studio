@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/database';
 import { Play, Settings, Tv2, Sparkles, LogIn, FolderOpen } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -21,10 +21,8 @@ export default function Index() {
 
     setIsLoading(true);
     try {
-      // Use RPC function that requires publish_code for access (prevents enumeration)
-      const { data, error } = await supabase
-        .rpc('get_published_project_by_code', { code: code.trim().toUpperCase() })
-        .maybeSingle();
+      // Use database abstraction for public project access by code
+      const { data, error } = await db.getPublishedProjectByCode(code.trim().toUpperCase());
 
       if (error) throw error;
 

@@ -7,7 +7,8 @@ import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Upload, Link, ChevronDown, Music, Settings2, Volume2 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { storage } from '@/lib/storage';
+import { auth } from '@/lib/auth';
 import { toast } from 'sonner';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -36,7 +37,7 @@ export function AudioPanel({ element, onUpdate }: AudioPanelProps) {
       return;
     }
 
-    const { data: { user } } = await supabase.auth.getUser();
+    const { user } = await auth.getUser();
     if (!user) {
       toast.error('You must be authenticated to upload');
       return;
@@ -49,20 +50,14 @@ export function AudioPanel({ element, onUpdate }: AudioPanelProps) {
       const fileName = `${uuidv4()}.${fileExt}`;
       const filePath = `${user.id}/audio/${fileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('signage-media')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false,
-        });
+      const { url, error: uploadError } = await storage.uploadFile(file, filePath, {
+        cacheControl: '3600',
+        upsert: false,
+      });
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('signage-media')
-        .getPublicUrl(filePath);
-
-      onUpdate({ src: publicUrl });
+      onUpdate({ src: url || '' });
       toast.success('Audio uploaded successfully');
     } catch (error) {
       console.error('Upload error:', error);
