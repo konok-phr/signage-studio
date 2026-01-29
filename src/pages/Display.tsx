@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { CanvasElement as CanvasElementType, SlideshowElement, ASPECT_RATIOS } from '@/types/signage';
 import { cn } from '@/lib/utils';
+import { Maximize, Minimize } from 'lucide-react';
 
 // Slideshow component with transitions
 function SlideshowDisplay({ element }: { element: SlideshowElement }) {
@@ -46,8 +47,56 @@ export default function Display() {
   const [ratio, setRatio] = useState('16:9');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showControls, setShowControls] = useState(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const currentRatio = ASPECT_RATIOS.find(r => r.value === ratio) || ASPECT_RATIOS[0];
+
+  // Handle mouse movement to show/hide controls
+  const handleMouseMove = useCallback(() => {
+    setShowControls(true);
+    
+    if (hideTimeoutRef.current) {
+      clearTimeout(hideTimeoutRef.current);
+    }
+    
+    hideTimeoutRef.current = setTimeout(() => {
+      setShowControls(false);
+    }, 2500);
+  }, []);
+
+  // Toggle fullscreen
+  const toggleFullscreen = useCallback(async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await document.documentElement.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.error('Fullscreen error:', err);
+      }
+    } else {
+      await document.exitFullscreen();
+      setIsFullscreen(false);
+    }
+  }, []);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      if (hideTimeoutRef.current) {
+        clearTimeout(hideTimeoutRef.current);
+      }
+    };
+  }, []);
+
 
   useEffect(() => {
     const loadProject = async () => {
@@ -206,9 +255,27 @@ export default function Display() {
 
   return (
     <div 
+      ref={containerRef}
       className="fixed inset-0 bg-black flex items-center justify-center overflow-hidden animate-fade-in"
-      style={{ cursor: 'none' }}
+      style={{ cursor: showControls ? 'default' : 'none' }}
+      onMouseMove={handleMouseMove}
     >
+      {/* Fullscreen Toggle Button */}
+      <button
+        onClick={toggleFullscreen}
+        className={cn(
+          "absolute top-4 right-4 z-50 p-3 rounded-lg bg-black/70 hover:bg-black/90 text-white transition-all duration-300",
+          showControls ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
+        )}
+        aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+      >
+        {isFullscreen ? (
+          <Minimize className="h-5 w-5" />
+        ) : (
+          <Maximize className="h-5 w-5" />
+        )}
+      </button>
+
       <div
         className="relative bg-background w-full h-full animate-scale-in"
         style={{
