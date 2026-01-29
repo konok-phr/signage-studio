@@ -1,14 +1,14 @@
 import { useRef, useState, useEffect } from 'react';
-import { CanvasElement as CanvasElementType, AspectRatio, SlideshowElement } from '@/types/signage';
+import { CanvasElement as CanvasElementType, AspectRatio, SlideshowElement, VideoElement } from '@/types/signage';
 import { cn } from '@/lib/utils';
-import { Play, Eye } from 'lucide-react';
+import { Play, Eye, Loader2 } from 'lucide-react';
 
 interface LivePreviewProps {
   ratio: AspectRatio;
   elements: CanvasElementType[];
 }
 
-// Slideshow component with actual transitions
+// Optimized Slideshow component with preloading
 function SlideshowPreview({ 
   element, 
   scale 
@@ -17,6 +17,17 @@ function SlideshowPreview({
   scale: number;
 }) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [loadedImages, setLoadedImages] = useState<Set<number>>(new Set());
+  
+  useEffect(() => {
+    element.images.forEach((img, index) => {
+      const image = new Image();
+      image.onload = () => {
+        setLoadedImages(prev => new Set([...prev, index]));
+      };
+      image.src = img.src;
+    });
+  }, [element.images]);
   
   useEffect(() => {
     if (!element.autoPlay || element.images.length <= 1) return;
@@ -37,6 +48,9 @@ function SlideshowPreview({
   
   return (
     <div className="relative w-full h-full overflow-hidden">
+      {!loadedImages.has(0) && (
+        <div className="absolute inset-0 bg-muted animate-pulse" />
+      )}
       {element.images.map((img, index) => (
         <img
           key={index}
@@ -44,15 +58,10 @@ function SlideshowPreview({
           alt=""
           className={cn(
             "absolute inset-0 w-full h-full object-cover transition-opacity duration-500",
-            element.transition === 'fade' ? (
-              index === currentIndex ? 'opacity-100' : 'opacity-0'
-            ) : (
-              index === currentIndex ? 'opacity-100' : 'opacity-0'
-            )
+            index === currentIndex && loadedImages.has(index) ? 'opacity-100' : 'opacity-0'
           )}
         />
       ))}
-      {/* Slide indicators */}
       {element.images.length > 1 && (
         <div className="absolute bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
           {element.images.map((_, index) => (
@@ -66,6 +75,46 @@ function SlideshowPreview({
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+// Optimized Video component with loading state
+function VideoPreview({
+  element,
+  scale
+}: {
+  element: VideoElement;
+  scale: number;
+}) {
+  const [isLoading, setIsLoading] = useState(true);
+  
+  const allVideos = element.videos?.length 
+    ? element.videos 
+    : element.src 
+      ? [{ src: element.src }] 
+      : [];
+
+  if (allVideos.length === 0) return null;
+
+  return (
+    <div className="relative w-full h-full">
+      {isLoading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/50 z-10">
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+        </div>
+      )}
+      <video
+        src={allVideos[0].src}
+        className="w-full h-full object-cover"
+        autoPlay={element.autoPlay}
+        loop={element.loop}
+        muted={element.muted}
+        playsInline
+        preload="auto"
+        onCanPlay={() => setIsLoading(false)}
+        onLoadStart={() => setIsLoading(true)}
+      />
     </div>
   );
 }
@@ -118,15 +167,10 @@ export function LivePreview({ ratio, elements }: LivePreviewProps) {
         );
 
       case 'video':
-        return element.src ? (
+        const hasVideos = element.src || (element.videos && element.videos.length > 0);
+        return hasVideos ? (
           <div key={element.id} style={style} className="overflow-hidden">
-            <video
-              src={element.src}
-              className="w-full h-full object-cover"
-              autoPlay={element.autoPlay}
-              loop={element.loop}
-              muted={element.muted}
-            />
+            <VideoPreview element={element} scale={scale} />
           </div>
         ) : (
           <div key={element.id} style={style} className="bg-muted/50" />
