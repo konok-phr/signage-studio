@@ -1,4 +1,4 @@
-import { CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
+import { CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement, AudioElement } from '@/types/signage';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,12 @@ import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Trash2, Copy, ArrowUp, ArrowDown, ChevronDown, Palette, Type, Settings2, Image as ImageIcon, Film, LayoutList, PlayCircle } from 'lucide-react';
+import { Trash2, Copy, ArrowUp, ArrowDown, ChevronDown, Palette, Type, Settings2, Image as ImageIcon, Film, LayoutList, PlayCircle, Music } from 'lucide-react';
 import { SlideshowPanel } from './SlideshowPanel';
 import { ImageCropPanel } from './ImageCropPanel';
+import { VideoPlaylistPanel } from './VideoPlaylistPanel';
+import { AudioPanel } from './AudioPanel';
 import { cn } from '@/lib/utils';
 
 interface PropertyPanelProps {
@@ -29,6 +29,7 @@ const elementIcons = {
   text: Type,
   ticker: PlayCircle,
   slideshow: LayoutList,
+  audio: Music,
 };
 
 export function PropertyPanel({
@@ -279,42 +280,11 @@ export function PropertyPanel({
   );
 
   const renderVideoProperties = (el: VideoElement) => (
-    <div className="space-y-4">
-      <ImageCropPanel element={el} onUpdate={onUpdate} />
-      
-      <Collapsible defaultOpen>
-        <CollapsibleTrigger className="flex items-center justify-between w-full py-2 text-sm font-medium hover:text-primary transition-colors">
-          <span className="flex items-center gap-2">
-            <Settings2 className="h-4 w-4" />
-            Playback
-          </span>
-          <ChevronDown className="h-4 w-4" />
-        </CollapsibleTrigger>
-        <CollapsibleContent className="space-y-3 pt-2">
-          <div className="flex items-center justify-between py-1">
-            <Label className="text-sm">Auto Play</Label>
-            <Switch
-              checked={el.autoPlay}
-              onCheckedChange={(checked) => onUpdate({ autoPlay: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between py-1">
-            <Label className="text-sm">Loop</Label>
-            <Switch
-              checked={el.loop}
-              onCheckedChange={(checked) => onUpdate({ loop: checked })}
-            />
-          </div>
-          <div className="flex items-center justify-between py-1">
-            <Label className="text-sm">Muted</Label>
-            <Switch
-              checked={el.muted}
-              onCheckedChange={(checked) => onUpdate({ muted: checked })}
-            />
-          </div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+    <VideoPlaylistPanel element={el} onUpdate={onUpdate} />
+  );
+
+  const renderAudioProperties = (el: AudioElement) => (
+    <AudioPanel element={el} onUpdate={onUpdate} />
   );
 
   const renderProperties = () => {
@@ -329,6 +299,8 @@ export function PropertyPanel({
         return renderVideoProperties(element as VideoElement);
       case 'slideshow':
         return <SlideshowPanel element={element as SlideshowElement} onUpdate={onUpdate} />;
+      case 'audio':
+        return renderAudioProperties(element as AudioElement);
       default:
         return <p className="text-sm text-muted-foreground">No properties available</p>;
     }

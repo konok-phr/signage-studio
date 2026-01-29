@@ -166,6 +166,17 @@ export function CanvasElement({
           </div>
         );
       
+      case 'audio':
+        return (
+          <div className="w-full h-full bg-gradient-to-br from-orange-500/20 to-orange-600/30 flex items-center justify-center text-orange-600 rounded">
+            <div className="text-center">
+              <div className="text-2xl mb-1">🎵</div>
+              <p className="text-xs font-medium">Background Music</p>
+              {element.src && <p className="text-xs opacity-70">Audio loaded</p>}
+            </div>
+          </div>
+        );
+      
       default:
         return null;
     }

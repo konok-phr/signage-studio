@@ -14,7 +14,7 @@ import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
 import { PublishModal } from '@/components/signage/PublishModal';
 import { useSignageProject } from '@/hooks/useSignageProject';
 import { useAuth } from '@/hooks/useAuth';
-import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement } from '@/types/signage';
+import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement, AudioElement } from '@/types/signage';
 import { Skeleton } from '@/components/ui/skeleton';
 
 // Generate a cryptographically random 6-character code
@@ -137,9 +137,10 @@ export default function Editor() {
           ...baseElement,
           type: 'video',
           src: '',
+          videos: [],
           autoPlay: true,
           loop: true,
-          muted: true,
+          muted: false, // Sound enabled by default now
         } as Omit<VideoElement, 'id' | 'zIndex'>);
         break;
       case 'slideshow':
@@ -150,6 +151,17 @@ export default function Editor() {
           transition: 'fade',
           autoPlay: true,
         } as Omit<SlideshowElement, 'id' | 'zIndex'>);
+        break;
+      case 'audio':
+        addElement({
+          ...baseElement,
+          size: { width: 150, height: 100 },
+          type: 'audio',
+          src: '',
+          autoPlay: true,
+          loop: true,
+          volume: 0.7,
+        } as Omit<AudioElement, 'id' | 'zIndex'>);
         break;
     }
   };
