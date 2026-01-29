@@ -1,122 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { CanvasElement as CanvasElementType, SlideshowElement, VideoElement, AudioElement, ASPECT_RATIOS } from '@/types/signage';
+import { CanvasElement as CanvasElementType, AudioElement, ASPECT_RATIOS } from '@/types/signage';
 import { cn } from '@/lib/utils';
 import { Maximize, Minimize } from 'lucide-react';
-
-// Slideshow component with transitions
-function SlideshowDisplay({ element }: { element: SlideshowElement }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  
-  useEffect(() => {
-    if (!element.autoPlay || element.images.length <= 1) return;
-    
-    const currentImage = element.images[currentIndex];
-    const duration = (currentImage?.duration || 5) * 1000;
-    
-    const timer = setTimeout(() => {
-      setCurrentIndex((prev) => (prev + 1) % element.images.length);
-    }, duration);
-    
-    return () => clearTimeout(timer);
-  }, [currentIndex, element.images, element.autoPlay]);
-  
-  if (element.images.length === 0) return null;
-  
-  return (
-    <div className="relative w-full h-full overflow-hidden">
-      {element.images.map((img, index) => (
-        <img
-          key={index}
-          src={img.src}
-          alt=""
-          className={cn(
-            "absolute inset-0 w-full h-full object-cover transition-opacity duration-1000",
-            index === currentIndex ? 'opacity-100' : 'opacity-0'
-          )}
-        />
-      ))}
-    </div>
-  );
-}
-
-// Video playlist component
-function VideoPlaylistDisplay({ element }: { element: VideoElement }) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  
-  // Get all videos - combine src with videos array for backwards compatibility
-  const allVideos = element.videos?.length 
-    ? element.videos 
-    : element.src 
-      ? [{ src: element.src }] 
-      : [];
-
-  const handleVideoEnded = useCallback(() => {
-    if (allVideos.length > 1) {
-      // Move to next video
-      setCurrentIndex((prev) => {
-        const next = prev + 1;
-        if (next >= allVideos.length) {
-          // If loop is enabled, go back to first video
-          return element.loop ? 0 : prev;
-        }
-        return next;
-      });
-    }
-  }, [allVideos.length, element.loop]);
-
-  // When index changes, play the new video
-  useEffect(() => {
-    if (videoRef.current && element.autoPlay) {
-      videoRef.current.play().catch(console.error);
-    }
-  }, [currentIndex, element.autoPlay]);
-
-  if (allVideos.length === 0) return null;
-
-  const currentVideo = allVideos[currentIndex];
-  // For single video, use the element's loop setting directly
-  const shouldLoop = allVideos.length === 1 && element.loop;
-
-  return (
-    <video
-      ref={videoRef}
-      key={currentIndex}
-      src={currentVideo.src}
-      className="w-full h-full object-cover"
-      autoPlay={element.autoPlay}
-      loop={shouldLoop}
-      muted={element.muted}
-      playsInline
-      onEnded={handleVideoEnded}
-    />
-  );
-}
-
-// Background audio component
-function BackgroundAudio({ element }: { element: AudioElement }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.volume = element.volume;
-    }
-  }, [element.volume]);
-
-  if (!element.src) return null;
-
-  return (
-    <audio
-      ref={audioRef}
-      src={element.src}
-      autoPlay={element.autoPlay}
-      loop={element.loop}
-      style={{ display: 'none' }}
-    />
-  );
-}
+import { VideoPlayer } from '@/components/signage/display/VideoPlayer';
+import { ImageDisplay } from '@/components/signage/display/ImageDisplay';
+import { SlideshowDisplay } from '@/components/signage/display/SlideshowDisplay';
+import { BackgroundAudio } from '@/components/signage/display/BackgroundAudio';
 
 export default function Display() {
   const { id } = useParams<{ id: string }>();
@@ -224,12 +115,7 @@ export default function Display() {
       case 'image':
         return element.src ? (
           <div style={style} className="overflow-hidden">
-            <img
-              src={element.src}
-              alt={element.alt || ''}
-              className="w-full h-full"
-              style={{ objectFit: element.objectFit || 'cover' }}
-            />
+            <ImageDisplay element={element} />
           </div>
         ) : null;
 
@@ -237,7 +123,7 @@ export default function Display() {
         const hasVideos = element.src || (element.videos && element.videos.length > 0);
         return hasVideos ? (
           <div style={style} className="overflow-hidden">
-            <VideoPlaylistDisplay element={element} />
+            <VideoPlayer element={element} />
           </div>
         ) : null;
 
