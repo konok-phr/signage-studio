@@ -1,4 +1,4 @@
-export type ElementType = 'image' | 'slideshow' | 'video' | 'ticker' | 'text';
+export type ElementType = 'image' | 'slideshow' | 'video' | 'ticker' | 'text' | 'audio';
 
 export interface Position {
   x: number;
@@ -35,6 +35,7 @@ export interface SlideshowElement extends BaseElement {
 export interface VideoElement extends BaseElement {
   type: 'video';
   src: string;
+  videos?: { src: string }[]; // Multiple videos support
   autoPlay: boolean;
   loop: boolean;
   muted: boolean;
@@ -60,7 +61,15 @@ export interface TextElement extends BaseElement {
   fontFamily: string;
 }
 
-export type CanvasElement = ImageElement | SlideshowElement | VideoElement | TickerElement | TextElement;
+export interface AudioElement extends BaseElement {
+  type: 'audio';
+  src: string;
+  autoPlay: boolean;
+  loop: boolean;
+  volume: number;
+}
+
+export type CanvasElement = ImageElement | SlideshowElement | VideoElement | TickerElement | TextElement | AudioElement;
 
 export interface AspectRatio {
   label: string;
@@ -102,12 +111,15 @@ export interface TemplateElement {
   text?: string;
   speed?: number;
   // Video properties
+  videos?: { src: string }[];
   autoPlay?: boolean;
   loop?: boolean;
   muted?: boolean;
   // Slideshow properties
   images?: { src: string; duration: number }[];
   transition?: 'fade' | 'slide' | 'none';
+  // Audio properties
+  volume?: number;
 }
 
 export interface Template {

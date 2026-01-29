@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { CanvasElement as CanvasElementType, SlideshowElement, ASPECT_RATIOS } from '@/types/signage';
+import { CanvasElement as CanvasElementType, SlideshowElement, VideoElement, AudioElement, ASPECT_RATIOS } from '@/types/signage';
 import { cn } from '@/lib/utils';
 import { Maximize, Minimize } from 'lucide-react';
 
@@ -38,6 +38,83 @@ function SlideshowDisplay({ element }: { element: SlideshowElement }) {
         />
       ))}
     </div>
+  );
+}
+
+// Video playlist component
+function VideoPlaylistDisplay({ element }: { element: VideoElement }) {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  
+  // Get all videos - combine src with videos array for backwards compatibility
+  const allVideos = element.videos?.length 
+    ? element.videos 
+    : element.src 
+      ? [{ src: element.src }] 
+      : [];
+
+  const handleVideoEnded = useCallback(() => {
+    if (allVideos.length > 1) {
+      // Move to next video
+      setCurrentIndex((prev) => {
+        const next = prev + 1;
+        if (next >= allVideos.length) {
+          // If loop is enabled, go back to first video
+          return element.loop ? 0 : prev;
+        }
+        return next;
+      });
+    }
+  }, [allVideos.length, element.loop]);
+
+  // When index changes, play the new video
+  useEffect(() => {
+    if (videoRef.current && element.autoPlay) {
+      videoRef.current.play().catch(console.error);
+    }
+  }, [currentIndex, element.autoPlay]);
+
+  if (allVideos.length === 0) return null;
+
+  const currentVideo = allVideos[currentIndex];
+  // For single video, use the element's loop setting directly
+  const shouldLoop = allVideos.length === 1 && element.loop;
+
+  return (
+    <video
+      ref={videoRef}
+      key={currentIndex}
+      src={currentVideo.src}
+      className="w-full h-full object-cover"
+      autoPlay={element.autoPlay}
+      loop={shouldLoop}
+      muted={element.muted}
+      playsInline
+      onEnded={handleVideoEnded}
+    />
+  );
+}
+
+// Background audio component
+function BackgroundAudio({ element }: { element: AudioElement }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = element.volume;
+    }
+  }, [element.volume]);
+
+  if (!element.src) return null;
+
+  return (
+    <audio
+      ref={audioRef}
+      src={element.src}
+      autoPlay={element.autoPlay}
+      loop={element.loop}
+      style={{ display: 'none' }}
+    />
   );
 }
 
@@ -157,16 +234,10 @@ export default function Display() {
         ) : null;
 
       case 'video':
-        return element.src ? (
+        const hasVideos = element.src || (element.videos && element.videos.length > 0);
+        return hasVideos ? (
           <div style={style} className="overflow-hidden">
-            <video
-              src={element.src}
-              className="w-full h-full object-cover"
-              autoPlay={element.autoPlay}
-              loop={element.loop}
-              muted={element.muted}
-              playsInline
-            />
+            <VideoPlaylistDisplay element={element} />
           </div>
         ) : null;
 
@@ -226,6 +297,10 @@ export default function Display() {
           </div>
         );
 
+      case 'audio':
+        // Audio elements don't render visually, they just play audio
+        return null;
+
       default:
         return null;
     }
@@ -253,6 +328,9 @@ export default function Display() {
     );
   }
 
+  // Filter audio elements for background playback
+  const audioElements = elements.filter((el): el is AudioElement => el.type === 'audio');
+
   return (
     <div 
       ref={containerRef}
@@ -260,6 +338,11 @@ export default function Display() {
       style={{ cursor: showControls ? 'default' : 'none' }}
       onMouseMove={handleMouseMove}
     >
+      {/* Background Audio Elements */}
+      {audioElements.map((audioEl) => (
+        <BackgroundAudio key={audioEl.id} element={audioEl} />
+      ))}
+
       {/* Fullscreen Toggle Button */}
       <button
         onClick={toggleFullscreen}

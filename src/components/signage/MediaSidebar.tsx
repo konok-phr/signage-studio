@@ -1,4 +1,4 @@
-import { Image, Film, Type, LayoutList, PlayCircle, GripVertical } from 'lucide-react';
+import { Image, Film, Type, LayoutList, PlayCircle, GripVertical, Music } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ElementType } from '@/types/signage';
 import { DraggableMediaItem } from './DraggableMediaItem';
@@ -26,8 +26,15 @@ const mediaItems = [
     type: 'video' as ElementType, 
     icon: Film, 
     label: 'Video', 
-    description: 'Video player with controls',
+    description: 'Video playlist with loop',
     color: 'bg-pink-500/10 text-pink-600',
+  },
+  { 
+    type: 'audio' as ElementType, 
+    icon: Music, 
+    label: 'Background Music', 
+    description: 'Audio that plays in background',
+    color: 'bg-orange-500/10 text-orange-600',
   },
   { 
     type: 'ticker' as ElementType, 
