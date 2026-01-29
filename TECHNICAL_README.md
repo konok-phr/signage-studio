@@ -15,6 +15,7 @@
 12. [Error Handling & Logging](#12-error-handling--logging)
 13. [Future Scalability & Extension Points](#13-future-scalability--extension-points)
 14. [Developer Notes & Best Practices](#14-developer-notes--best-practices)
+15. [Self-Hosted Deployment](#15-self-hosted-deployment)
 
 ---
 
@@ -113,6 +114,22 @@ src/
 │   └── supabase/
 │       ├── client.ts                # Supabase client instance
 │       └── types.ts                 # Auto-generated TypeScript types
+├── lib/
+│   ├── auth/                        # Authentication abstraction layer
+│   │   ├── index.ts                 # Auth adapter export
+│   │   ├── types.ts                 # Auth type definitions
+│   │   └── supabase-adapter.ts      # Supabase auth implementation
+│   ├── database/                    # Database abstraction layer
+│   │   ├── index.ts                 # Database adapter export
+│   │   ├── types.ts                 # Database type definitions
+│   │   └── supabase-adapter.ts      # Supabase database implementation
+│   ├── storage/                     # Storage abstraction layer
+│   │   ├── index.ts                 # Storage adapter export
+│   │   ├── types.ts                 # Storage type definitions
+│   │   └── supabase-adapter.ts      # Supabase storage implementation
+│   ├── config.ts                    # Environment configuration
+│   ├── ticker.ts                    # Ticker animation utilities
+│   └── utils.ts                     # Utility functions (cn, etc.)
 ├── pages/
 │   ├── Auth.tsx                     # Login/Signup page
 │   ├── Display.tsx                  # Public display player
@@ -122,11 +139,13 @@ src/
 │   └── Projects.tsx                 # Project management list
 ├── types/
 │   └── signage.ts                   # Domain type definitions
-├── lib/
-│   └── utils.ts                     # Utility functions (cn, etc.)
 ├── App.tsx                          # Root component with routes
 ├── main.tsx                         # Application entry point
 └── index.css                        # Global styles & design tokens
+
+docs/
+├── query.md                         # PostgreSQL schema for self-hosting
+└── SELF_HOSTED_SETUP.md             # VPS deployment guide
 
 supabase/
 ├── config.toml                      # Supabase configuration
@@ -166,7 +185,17 @@ supabase/
 | @dnd-kit/core | ^6.3.1 | Drag-and-drop primitives |
 | @dnd-kit/utilities | ^3.2.2 | DnD utility functions |
 
-### Backend (Lovable Cloud / Supabase)
+### Backend (Configurable Providers)
+
+The application supports multiple backend providers configured via environment variables:
+
+| Provider Type | Options | Default |
+|---------------|---------|---------|
+| Database | `supabase`, `postgres` | `supabase` |
+| Authentication | `supabase`, `local` (JWT) | `supabase` |
+| Storage | `supabase`, `local`, `s3` | `supabase` |
+
+#### Lovable Cloud / Supabase (Default)
 | Component | Purpose |
 |-----------|---------|
 | PostgreSQL | Relational database |
@@ -174,6 +203,14 @@ supabase/
 | Supabase Storage | File/media storage |
 | RPC Functions | Secure data access |
 | Row-Level Security | Data authorization |
+
+#### Self-Hosted (Local PostgreSQL)
+| Component | Purpose |
+|-----------|---------|
+| PostgreSQL | Direct database connection |
+| JWT + bcrypt | Local authentication |
+| Local FS / MinIO | File storage |
+| Application-level | Data authorization |
 
 ### Why This Stack Was Chosen
 - **React + Vite**: Fast development with HMR and optimized production builds
@@ -967,17 +1004,28 @@ style: Format PropertyPanel component
 ### Common Operations
 
 ```typescript
+// Using the abstraction layers (recommended)
+import { db } from '@/lib/database';
+import { auth } from '@/lib/auth';
+import { storage } from '@/lib/storage';
+
 // Add element
 addElement({ type: 'text', position: {...}, size: {...}, content: '...' });
 
 // Update element
 updateElement(elementId, { content: 'New text' });
 
-// Save project
-await supabase.from('signage_projects').update(data).eq('id', projectId);
+// Save project (via abstraction)
+await db.updateProject(projectId, data);
 
-// Load public project
-await supabase.rpc('get_published_project_by_code', { code: 'ABC123' });
+// Load public project (via abstraction)
+await db.getPublishedProjectByCode('ABC123');
+
+// Upload file
+const { url, error } = await storage.uploadFile(file, 'path/to/file');
+
+// Check authentication
+const { user } = await auth.getUser();
 ```
 
 ### Useful Commands
@@ -992,5 +1040,100 @@ npm run test     # Run tests
 
 ---
 
+## 15. Self-Hosted Deployment
+
+### Overview
+
+The application supports self-hosted deployment with configurable backend providers. This allows running the entire stack on your own VPS without external dependencies.
+
+### Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Environment Variables                     │
+│  DATABASE_PROVIDER | AUTH_PROVIDER | STORAGE_PROVIDER        │
+└────────────────────────────┬────────────────────────────────┘
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────┐
+│                   Abstraction Layer                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │  db (API)   │  │ auth (API)  │  │   storage (API)     │ │
+│  └──────┬──────┘  └──────┬──────┘  └──────────┬──────────┘ │
+└─────────┼────────────────┼─────────────────────┼────────────┘
+          │                │                     │
+    ┌─────┴─────┐    ┌─────┴─────┐         ┌─────┴─────┐
+    ▼           ▼    ▼           ▼         ▼           ▼
+┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐ ┌────────┐
+│Supabase│ │Postgres│ │Supabase│ │Local   │ │Supabase│ │Local/S3│
+│Adapter │ │Adapter │ │Adapter │ │JWT     │ │Adapter │ │Adapter │
+└────────┘ └────────┘ └────────┘ └────────┘ └────────┘ └────────┘
+```
+
+### Configuration
+
+Set providers via environment variables:
+
+```bash
+# Backend providers
+DATABASE_PROVIDER=postgres    # supabase | postgres
+AUTH_PROVIDER=local           # supabase | local
+STORAGE_PROVIDER=local        # supabase | local | s3
+
+# PostgreSQL (when DATABASE_PROVIDER=postgres)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=signage_user
+POSTGRES_PASSWORD=your_password
+POSTGRES_DATABASE=signage_db
+
+# JWT (when AUTH_PROVIDER=local)
+JWT_SECRET=your-secret-key-min-32-chars
+JWT_EXPIRES_IN=7d
+
+# Storage (when STORAGE_PROVIDER=local)
+STORAGE_PATH=./uploads
+STORAGE_URL=http://localhost:3000/uploads
+```
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `src/lib/config.ts` | Environment configuration |
+| `src/lib/database/index.ts` | Database adapter selection |
+| `src/lib/auth/index.ts` | Auth adapter selection |
+| `src/lib/storage/index.ts` | Storage adapter selection |
+| `docs/query.md` | PostgreSQL schema for self-hosting |
+| `docs/SELF_HOSTED_SETUP.md` | VPS deployment guide |
+| `.env.example` | Configuration template |
+| `docker-compose.yml` | Container orchestration |
+
+### Deployment Options
+
+1. **Docker Compose** (Recommended)
+   - Includes PostgreSQL, Redis, MinIO
+   - Single command: `docker-compose up -d`
+
+2. **Manual VPS Setup**
+   - Follow `docs/SELF_HOSTED_SETUP.md`
+   - Requires Nginx, PostgreSQL, Node.js
+
+3. **Hybrid** (Supabase + Self-Hosted Storage)
+   - Use Supabase for auth/database
+   - Self-hosted S3-compatible storage
+
+### Migration Path
+
+To migrate from Lovable Cloud to self-hosted:
+
+1. Export database schema from `docs/query.md`
+2. Set up PostgreSQL and run schema
+3. Export media files from Supabase Storage
+4. Configure environment variables
+5. Deploy with Docker or manually
+
+---
+
 *Last updated: January 2026*
-*Documentation version: 1.0.0*
+*Documentation version: 2.0.0*
