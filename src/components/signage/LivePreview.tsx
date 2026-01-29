@@ -218,7 +218,7 @@ export function LivePreview({ ratio, elements }: LivePreviewProps) {
             <div 
               className="whitespace-nowrap"
               style={{
-                animation: `marquee ${20 / element.speed}s linear infinite`,
+                animation: `marquee ${20 / (element.speed || 1)}s linear infinite`,
               }}
             >
               {element.text}

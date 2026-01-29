@@ -32,6 +32,16 @@ const elementIcons = {
   audio: Music,
 };
 
+// Map legacy speed values to closest preset
+const SPEED_PRESETS = [0.3, 0.5, 0.8, 1, 1.5, 2, 3];
+function getSpeedPreset(speed: number): string {
+  // Find the closest preset value
+  const closest = SPEED_PRESETS.reduce((prev, curr) => 
+    Math.abs(curr - speed) < Math.abs(prev - speed) ? curr : prev
+  );
+  return String(closest);
+}
+
 export function PropertyPanel({
   element,
   onUpdate,
@@ -219,11 +229,11 @@ export function PropertyPanel({
           <div className="space-y-2">
             <Label className="text-xs">Speed</Label>
             <Select
-              value={String(el.speed)}
+              value={getSpeedPreset(el.speed)}
               onValueChange={(value) => onUpdate({ speed: Number(value) })}
             >
               <SelectTrigger className="h-8">
-                <SelectValue />
+                <SelectValue placeholder="Select speed" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="0.3">Very Slow (60s)</SelectItem>
