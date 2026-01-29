@@ -152,7 +152,8 @@ export default function Display() {
         );
 
       case 'ticker':
-        const animationDuration = 20 / element.speed;
+        // Speed values: 0.3=60s, 0.5=40s, 0.8=25s, 1=20s, 1.5=13s, 2=10s, 3=7s
+        const animationDuration = 20 / (element.speed || 1);
         return (
           <div
             style={{

@@ -126,7 +126,7 @@ export default function Editor() {
           size: { width: 600, height: 60 },
           type: 'ticker',
           text: 'Breaking news: Your ticker text here...',
-          speed: 5,
+          speed: 0.5,
           fontSize: 24,
           color: '#ffffff',
           backgroundColor: '#000000',
