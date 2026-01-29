@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/database';
 import { CanvasElement, ASPECT_RATIOS } from '@/types/signage';
 
 interface UseSignageProjectOptions {
   initialProjectId?: string | null;
+  userId?: string;
 }
 
 export function useSignageProject(options: UseSignageProjectOptions = {}) {
@@ -17,15 +18,16 @@ export function useSignageProject(options: UseSignageProjectOptions = {}) {
   const [publishCode, setPublishCode] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load existing project
-  const loadProject = useCallback(async (id: string) => {
+  // Load existing project using database abstraction
+  const loadProject = useCallback(async (id: string, userId?: string) => {
+    if (!userId && !options.userId) {
+      console.error('User ID required to load project');
+      return null;
+    }
+    
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('signage_projects')
-        .select('*')
-        .eq('id', id)
-        .maybeSingle();
+      const { data, error } = await db.getProjectById(id, userId || options.userId!);
 
       if (error) throw error;
       
@@ -33,7 +35,7 @@ export function useSignageProject(options: UseSignageProjectOptions = {}) {
         setProjectId(data.id);
         setProjectName(data.name);
         setRatio(data.ratio);
-        setElements(data.elements as unknown as CanvasElement[]);
+        setElements(data.elements);
         setIsPublished(data.is_published);
         setPublishCode(data.publish_code);
       }
@@ -45,7 +47,7 @@ export function useSignageProject(options: UseSignageProjectOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [options.userId]);
 
   // Load project on mount if initialProjectId is provided
   useEffect(() => {

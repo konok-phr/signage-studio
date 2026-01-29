@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/lib/database';
 import { CanvasElement as CanvasElementType, AudioElement, ASPECT_RATIOS } from '@/types/signage';
 import { cn } from '@/lib/utils';
 import { getTickerDurationSeconds, getTickerStartOffsetSeconds } from '@/lib/ticker';
@@ -76,10 +76,8 @@ export default function Display() {
       }
 
       try {
-        // Use RPC function that requires project ID for access (prevents enumeration)
-        const { data, error: fetchError } = await supabase
-          .rpc('get_published_project_by_id', { project_id: id })
-          .maybeSingle();
+        // Use database abstraction for public project access
+        const { data, error: fetchError } = await db.getPublishedProjectById(id);
 
         if (fetchError) throw fetchError;
 
@@ -89,7 +87,7 @@ export default function Display() {
           return;
         }
 
-        setElements(data.elements as unknown as CanvasElementType[]);
+        setElements(data.elements);
         setRatio(data.ratio);
       } catch (err) {
         console.error('Load error:', err);
