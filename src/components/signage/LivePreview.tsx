@@ -1,7 +1,8 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { CanvasElement as CanvasElementType, AspectRatio, SlideshowElement, VideoElement } from '@/types/signage';
 import { cn } from '@/lib/utils';
 import { Play, Eye, Loader2 } from 'lucide-react';
+import { getTickerDurationSeconds, getTickerStartOffsetSeconds } from '@/lib/ticker';
 
 interface LivePreviewProps {
   ratio: AspectRatio;
@@ -88,12 +89,45 @@ function VideoPreview({
   scale: number;
 }) {
   const [isLoading, setIsLoading] = useState(true);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [hasError, setHasError] = useState(false);
   
   const allVideos = element.videos?.length 
     ? element.videos 
     : element.src 
       ? [{ src: element.src }] 
       : [];
+
+  // Reset to first video when the playlist changes
+  useEffect(() => {
+    setCurrentIndex(0);
+    setHasError(false);
+    setIsLoading(true);
+  }, [allVideos.map((v) => v.src).join('|')]);
+
+  const currentVideo = allVideos[currentIndex];
+  const shouldLoop = allVideos.length === 1 && element.loop;
+
+  const goNext = useCallback(() => {
+    if (allVideos.length <= 1) return;
+    setCurrentIndex((prev) => {
+      const next = prev + 1;
+      if (next >= allVideos.length) return element.loop ? 0 : prev;
+      return next;
+    });
+    setIsLoading(true);
+  }, [allVideos.length, element.loop]);
+
+  const handleEnded = useCallback(() => {
+    goNext();
+  }, [goNext]);
+
+  const handleError = useCallback(() => {
+    setHasError(true);
+    setIsLoading(false);
+    // auto-skip on error
+    setTimeout(goNext, 800);
+  }, [goNext]);
 
   if (allVideos.length === 0) return null;
 
@@ -104,16 +138,27 @@ function VideoPreview({
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
         </div>
       )}
+      {hasError && (
+        <div className="absolute inset-0 flex items-center justify-center bg-muted/70 z-10">
+          <span className="text-xs text-muted-foreground">Video unavailable</span>
+        </div>
+      )}
       <video
-        src={allVideos[0].src}
+        key={currentIndex}
+        src={currentVideo?.src}
         className="w-full h-full object-cover"
         autoPlay={element.autoPlay}
-        loop={element.loop}
+        loop={shouldLoop}
         muted={element.muted}
         playsInline
         preload="auto"
-        onCanPlay={() => setIsLoading(false)}
+        onCanPlay={() => {
+          setIsLoading(false);
+          setHasError(false);
+        }}
         onLoadStart={() => setIsLoading(true)}
+        onEnded={handleEnded}
+        onError={handleError}
       />
     </div>
   );
@@ -202,6 +247,8 @@ export function LivePreview({ ratio, elements }: LivePreviewProps) {
         );
 
       case 'ticker':
+        const tickerDuration = getTickerDurationSeconds(element.speed);
+        const tickerStartOffset = getTickerStartOffsetSeconds(tickerDuration);
         return (
           <div
             key={element.id}
@@ -218,7 +265,9 @@ export function LivePreview({ ratio, elements }: LivePreviewProps) {
             <div 
               className="whitespace-nowrap"
               style={{
-                animation: `marquee ${20 / (element.speed || 1)}s linear infinite`,
+                animation: `marquee ${tickerDuration}s linear infinite`,
+                animationDelay: `-${tickerStartOffset}s`,
+                willChange: 'transform',
               }}
             >
               {element.text}

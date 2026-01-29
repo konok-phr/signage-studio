@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { CanvasElement as CanvasElementType, AudioElement, ASPECT_RATIOS } from '@/types/signage';
 import { cn } from '@/lib/utils';
+import { getTickerDurationSeconds, getTickerStartOffsetSeconds } from '@/lib/ticker';
 import { Maximize, Minimize } from 'lucide-react';
 import { VideoPlayer } from '@/components/signage/display/VideoPlayer';
 import { ImageDisplay } from '@/components/signage/display/ImageDisplay';
@@ -152,8 +153,8 @@ export default function Display() {
         );
 
       case 'ticker':
-        // Speed values: 0.3=60s, 0.5=40s, 0.8=25s, 1=20s, 1.5=13s, 2=10s, 3=7s
-        const animationDuration = 20 / (element.speed || 1);
+        const animationDuration = getTickerDurationSeconds(element.speed);
+        const startOffset = getTickerStartOffsetSeconds(animationDuration);
         return (
           <div
             style={{
@@ -170,6 +171,8 @@ export default function Display() {
               className="whitespace-nowrap"
               style={{
                 animation: `marquee ${animationDuration}s linear infinite`,
+                animationDelay: `-${startOffset}s`,
+                willChange: 'transform',
               }}
             >
               {element.text}
@@ -256,18 +259,22 @@ export default function Display() {
           animationFillMode: 'both',
         }}
       >
-        {elements.map((element, index) => (
+        {elements.map((element, index) => {
+          const isTicker = element.type === 'ticker';
+          const animationDelay = isTicker ? 0 : 0.3 + index * 0.1;
+          return (
           <div
             key={element.id}
             className="animate-fade-in"
             style={{
-              animationDelay: `${0.3 + index * 0.1}s`,
+              animationDelay: `${animationDelay}s`,
               animationFillMode: 'both',
             }}
           >
             {renderElement(element)}
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

@@ -33,7 +33,7 @@ const elementIcons = {
 };
 
 // Map legacy speed values to closest preset
-const SPEED_PRESETS = [0.3, 0.5, 0.8, 1, 1.5, 2, 3];
+const SPEED_PRESETS = [0.15, 0.2, 0.3, 0.5, 0.8, 1, 1.5, 2, 3];
 function getSpeedPreset(speed: number): string {
   // Find the closest preset value
   const closest = SPEED_PRESETS.reduce((prev, curr) => 
@@ -236,6 +236,8 @@ export function PropertyPanel({
                 <SelectValue placeholder="Select speed" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value="0.15">Ultra Slow (120s)</SelectItem>
+                <SelectItem value="0.2">Extra Slow (90s)</SelectItem>
                 <SelectItem value="0.3">Very Slow (60s)</SelectItem>
                 <SelectItem value="0.5">Slow (40s)</SelectItem>
                 <SelectItem value="0.8">Relaxed (25s)</SelectItem>
