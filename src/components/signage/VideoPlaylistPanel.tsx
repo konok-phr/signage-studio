@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { Plus, Trash2, Upload, Link, ChevronDown, Film, Settings2, GripVertical } from 'lucide-react';
+import { Plus, Trash2, Upload, Link, ChevronDown, Film, Settings2, GripVertical, ArrowUp, ArrowDown } from 'lucide-react';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +64,18 @@ export function VideoPlaylistPanel({ element, onUpdate }: VideoPlaylistPanelProp
     onUpdate({ 
       videos: newVideos,
       src: newVideos[0]?.src || ''
+    });
+  };
+
+  const handleMoveVideo = (from: number, to: number) => {
+    if (to < 0 || to >= allVideos.length || from === to) return;
+    const newVideos = [...allVideos];
+    const [moved] = newVideos.splice(from, 1);
+    if (!moved) return;
+    newVideos.splice(to, 0, moved);
+    onUpdate({
+      videos: newVideos,
+      src: newVideos[0]?.src || '',
     });
   };
 
@@ -128,7 +140,7 @@ export function VideoPlaylistPanel({ element, onUpdate }: VideoPlaylistPanelProp
             <div className="space-y-2">
               {allVideos.map((video, index) => (
                 <div
-                  key={index}
+                   key={`${video.src}-${index}`}
                   className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg group"
                 >
                   <GripVertical className="h-4 w-4 text-muted-foreground" />
@@ -142,14 +154,38 @@ export function VideoPlaylistPanel({ element, onUpdate }: VideoPlaylistPanelProp
                   <span className="flex-1 text-xs truncate">
                     Video {index + 1}
                   </span>
+
+                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-7 w-7 p-0"
+                       onClick={() => handleMoveVideo(index, index - 1)}
+                       disabled={index === 0}
+                       aria-label="Move up"
+                     >
+                       <ArrowUp className="h-3.5 w-3.5" />
+                     </Button>
+                     <Button
+                       variant="ghost"
+                       size="sm"
+                       className="h-7 w-7 p-0"
+                       onClick={() => handleMoveVideo(index, index + 1)}
+                       disabled={index === allVideos.length - 1}
+                       aria-label="Move down"
+                     >
+                       <ArrowDown className="h-3.5 w-3.5" />
+                     </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100"
+                     className="h-7 w-7 p-0"
                     onClick={() => handleRemoveVideo(index)}
+                     aria-label="Remove"
                   >
                     <Trash2 className="h-3.5 w-3.5 text-destructive" />
                   </Button>
+                   </div>
                 </div>
               ))}
             </div>
