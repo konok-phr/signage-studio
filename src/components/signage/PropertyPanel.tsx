@@ -217,17 +217,24 @@ export function PropertyPanel({
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-3 pt-2">
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs">Speed</Label>
-              <span className="text-xs text-muted-foreground">{el.speed}x</span>
-            </div>
-            <Slider
-              value={[el.speed]}
-              onValueChange={([value]) => onUpdate({ speed: value })}
-              min={1}
-              max={10}
-              step={1}
-            />
+            <Label className="text-xs">Speed</Label>
+            <Select
+              value={String(el.speed)}
+              onValueChange={(value) => onUpdate({ speed: Number(value) })}
+            >
+              <SelectTrigger className="h-8">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="0.3">Very Slow (60s)</SelectItem>
+                <SelectItem value="0.5">Slow (40s)</SelectItem>
+                <SelectItem value="0.8">Relaxed (25s)</SelectItem>
+                <SelectItem value="1">Normal (20s)</SelectItem>
+                <SelectItem value="1.5">Medium (13s)</SelectItem>
+                <SelectItem value="2">Fast (10s)</SelectItem>
+                <SelectItem value="3">Very Fast (7s)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-2">
             <div className="flex items-center justify-between">
