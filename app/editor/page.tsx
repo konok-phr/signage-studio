@@ -1,237 +1,371 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth/auth-context';
+import { DndContext, DragEndEvent, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
 import { toast } from 'sonner';
-import { Tv } from 'lucide-react';
-import type { CanvasElement, AspectRatio } from '@/types/signage';
+import { db } from '@/app/lib/database';
+import { useAuth } from '@/lib/auth/auth-context';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { MediaSidebar } from '@/components/signage/MediaSidebar';
+import { DesignCanvas } from '@/components/signage/DesignCanvas';
+import { PropertyPanel } from '@/components/signage/PropertyPanel';
+import { PreviewModal } from '@/components/signage/PreviewModal';
+import { EditorToolbar } from '@/components/signage/EditorToolbar';
+import { TemplatesDialog } from '@/components/signage/TemplatesDialog';
+import { PublishModal } from '@/components/signage/PublishModal';
+import { useSignageProject } from '@/app/hooks/useSignageProject';
+import { ElementType, CanvasElement, ImageElement, TextElement, TickerElement, VideoElement, SlideshowElement, AudioElement } from '@/types/signage';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Import existing components (these would need to be copied from src/components)
-// For now, we'll create a placeholder that shows the structure
+// Generate a cryptographically random 6-character code
+function generatePublishCode(): string {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  const randomValues = new Uint8Array(6);
+  crypto.getRandomValues(randomValues);
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(randomValues[i] % chars.length);
+  }
+  return code;
+}
 
-const RATIO_DIMENSIONS: Record<AspectRatio, { width: number; height: number }> = {
-  '16:9': { width: 1920, height: 1080 },
-  '9:16': { width: 1080, height: 1920 },
-  '4:3': { width: 1440, height: 1080 },
-  '1:1': { width: 1080, height: 1080 },
-};
-
-interface Project {
-  id: string;
-  name: string;
-  ratio: string;
-  canvas_width: number;
-  canvas_height: number;
-  elements: CanvasElement[];
-  is_published: boolean;
-  publish_code: string | null;
+// Generate a unique publish code with collision detection
+async function generateUniquePublishCode(): Promise<string> {
+  const maxAttempts = 10;
+  
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const code = generatePublishCode();
+    const isUnique = await db.isPublishCodeUnique(code);
+    
+    if (isUnique) return code;
+  }
+  throw new Error('Failed to generate unique publish code. Please try again.');
 }
 
 export default function EditorPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const projectId = searchParams.get('project');
-  const { user, isLoading: authLoading } = useAuth();
+  const editProjectId = searchParams.get('project');
+  
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const [templatesOpen, setTemplatesOpen] = useState(false);
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
-  const [project, setProject] = useState<Project | null>(null);
-  const [elements, setElements] = useState<CanvasElement[]>([]);
-  const [ratio, setRatio] = useState<AspectRatio>('16:9');
-  const [projectName, setProjectName] = useState('Untitled Project');
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
-  // Load project if editing existing
+  const {
+    projectId,
+    setProjectId,
+    projectName,
+    setProjectName,
+    ratio,
+    setRatio,
+    currentRatio,
+    elements,
+    setElements,
+    selectedElementId,
+    setSelectedElementId,
+    selectedElement,
+    isPublished,
+    setIsPublished,
+    publishCode,
+    setPublishCode,
+    isLoading,
+    addElement,
+    updateElement,
+    deleteElement,
+    duplicateElement,
+    bringToFront,
+    sendToBack,
+    clearCanvas,
+  } = useSignageProject({ initialProjectId: editProjectId });
+
+  // Redirect if not authenticated
   useEffect(() => {
-    const loadProject = async () => {
-      if (!projectId || !user) {
-        setLoading(false);
-        return;
-      }
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth');
+    }
+  }, [authLoading, isAuthenticated, router]);
 
-      try {
-        const response = await fetch(`/api/projects/${projectId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setProject(data);
-          setElements(data.elements || []);
-          setRatio(data.ratio as AspectRatio);
-          setProjectName(data.name);
-        } else {
-          toast.error('Project not found');
-          router.push('/projects');
-        }
-      } catch (error) {
-        toast.error('Failed to load project');
-      } finally {
-        setLoading(false);
-      }
+  const handleAddElement = (type: ElementType) => {
+    const baseElement = {
+      position: { x: 100, y: 100 },
+      size: { width: 300, height: 200 },
     };
 
-    if (!authLoading) {
-      loadProject();
-    }
-  }, [projectId, user, authLoading, router]);
-
-  const handleSave = async () => {
-    if (!user) return;
-
-    setSaving(true);
-    try {
-      const dimensions = RATIO_DIMENSIONS[ratio];
-      
-      if (project?.id) {
-        // Update existing project
-        const response = await fetch(`/api/projects/${project.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: projectName,
-            ratio,
-            canvas_width: dimensions.width,
-            canvas_height: dimensions.height,
-            elements,
-          }),
-        });
-
-        if (response.ok) {
-          toast.success('Project saved');
-        } else {
-          throw new Error('Save failed');
-        }
-      } else {
-        // Create new project
-        const response = await fetch('/api/projects', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: projectName,
-            ratio,
-            canvas_width: dimensions.width,
-            canvas_height: dimensions.height,
-            elements,
-          }),
-        });
-
-        if (response.ok) {
-          const newProject = await response.json();
-          setProject(newProject);
-          router.replace(`/editor?project=${newProject.id}`);
-          toast.success('Project created');
-        } else {
-          throw new Error('Create failed');
-        }
-      }
-    } catch (error) {
-      toast.error('Failed to save project');
-    } finally {
-      setSaving(false);
+    switch (type) {
+      case 'image':
+        addElement({
+          ...baseElement,
+          type: 'image',
+          src: '',
+          objectFit: 'cover',
+        } as Omit<ImageElement, 'id' | 'zIndex'>);
+        break;
+      case 'text':
+        addElement({
+          ...baseElement,
+          type: 'text',
+          content: 'Enter your text',
+          fontSize: 32,
+          fontWeight: 'normal',
+          color: '#000000',
+          backgroundColor: 'transparent',
+          textAlign: 'center',
+          fontFamily: 'sans-serif',
+        } as Omit<TextElement, 'id' | 'zIndex'>);
+        break;
+      case 'ticker':
+        addElement({
+          ...baseElement,
+          size: { width: 600, height: 60 },
+          type: 'ticker',
+          text: 'Breaking news: Your ticker text here...',
+          speed: 0.5,
+          fontSize: 24,
+          color: '#ffffff',
+          backgroundColor: '#000000',
+        } as Omit<TickerElement, 'id' | 'zIndex'>);
+        break;
+      case 'video':
+        addElement({
+          ...baseElement,
+          type: 'video',
+          src: '',
+          videos: [],
+          autoPlay: true,
+          loop: true,
+          muted: false,
+        } as Omit<VideoElement, 'id' | 'zIndex'>);
+        break;
+      case 'slideshow':
+        addElement({
+          ...baseElement,
+          type: 'slideshow',
+          images: [],
+          transition: 'fade',
+          autoPlay: true,
+        } as Omit<SlideshowElement, 'id' | 'zIndex'>);
+        break;
+      case 'audio':
+        addElement({
+          ...baseElement,
+          size: { width: 150, height: 100 },
+          type: 'audio',
+          src: '',
+          autoPlay: true,
+          loop: true,
+          volume: 0.7,
+        } as Omit<AudioElement, 'id' | 'zIndex'>);
+        break;
     }
   };
 
-  if (authLoading || loading) {
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && over.id === 'canvas-drop-zone') {
+      const type = active.data.current?.type as ElementType;
+      if (type) {
+        handleAddElement(type);
+        toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} element added!`);
+      }
+    }
+  };
+
+  const handleSelectTemplate = (templateElements: CanvasElement[], templateRatio: string) => {
+    setElements(templateElements);
+    setRatio(templateRatio);
+    setSelectedElementId(null);
+  };
+
+  const handleSave = async () => {
+    if (!user) {
+      toast.error('You must be signed in to save projects');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const projectData = {
+        name: projectName,
+        ratio,
+        canvas_width: currentRatio.width,
+        canvas_height: currentRatio.height,
+        elements,
+        user_id: user.id,
+      };
+
+      if (projectId) {
+        const { error } = await db.updateProject(projectId, user.id, projectData);
+        
+        if (error) throw error;
+        toast.success('Project saved!');
+      } else {
+        const { data, error } = await db.createProject(projectData);
+        
+        if (error) throw error;
+        if (data) setProjectId(data.id);
+        toast.success('Project created!');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+      toast.error('Failed to save project');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!user) {
+      toast.error('You must be signed in to publish projects');
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const code = publishCode || await generateUniquePublishCode();
+      
+      const projectData = {
+        name: projectName,
+        ratio,
+        canvas_width: currentRatio.width,
+        canvas_height: currentRatio.height,
+        elements,
+        is_published: true,
+        published_at: new Date().toISOString(),
+        publish_code: code,
+        user_id: user.id,
+      };
+
+      let savedProjectId = projectId;
+
+      if (projectId) {
+        const { error } = await db.updateProject(projectId, user.id, projectData);
+        
+        if (error) throw error;
+      } else {
+        const { data, error } = await db.createProject(projectData);
+        
+        if (error) throw error;
+        if (data) {
+          savedProjectId = data.id;
+          setProjectId(data.id);
+        }
+      }
+
+      setIsPublished(true);
+      setPublishCode(code);
+      setPublishModalOpen(true);
+    } catch (error) {
+      console.error('Publish error:', error);
+      toast.error('Failed to publish project');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (authLoading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+      <div className="h-screen flex flex-col bg-background">
+        <div className="h-14 border-b bg-card flex items-center px-4 gap-4">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-8 w-24" />
+          <div className="flex-1" />
+          <Skeleton className="h-8 w-20" />
+          <Skeleton className="h-8 w-20" />
+        </div>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Loading project...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <header className="h-14 border-b border-border flex items-center justify-between px-4 bg-background">
-        <div className="flex items-center gap-4">
-          <Link href="/projects" className="flex items-center gap-2 text-muted-foreground hover:text-foreground">
-            <Tv className="h-5 w-5" />
-            <span className="font-semibold">Digital Signage</span>
-          </Link>
-          <span className="text-muted-foreground">/</span>
-          <input
-            type="text"
-            value={projectName}
-            onChange={(e) => setProjectName(e.target.value)}
-            className="bg-transparent border-none text-sm font-medium focus:outline-none focus:ring-0"
-            placeholder="Project Name"
-          />
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleSave}
-            disabled={saving}
-            className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50"
-          >
-            {saving ? 'Saving...' : 'Save'}
-          </button>
-        </div>
-      </header>
+    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+      <div className="h-screen flex flex-col bg-background">
+        <EditorToolbar
+          projectName={projectName}
+          onProjectNameChange={setProjectName}
+          ratio={ratio}
+          onRatioChange={setRatio}
+          onSave={handleSave}
+          onPublish={handlePublish}
+          onOpenTemplates={() => setTemplatesOpen(true)}
+          onOpenPreview={() => setPreviewModalOpen(true)}
+          onClearCanvas={clearCanvas}
+          isSaving={isSaving}
+          isPublished={isPublished}
+          publishCode={publishCode}
+        />
 
-      {/* Main Editor Area */}
-      <div className="flex-1 flex">
-        {/* Left Sidebar - Media */}
-        <aside className="w-64 border-r border-border bg-card p-4">
-          <h3 className="font-semibold mb-4">Media Elements</h3>
-          <div className="space-y-2">
-            <div className="p-3 border border-dashed border-border rounded-lg text-center text-sm text-muted-foreground cursor-pointer hover:border-primary hover:text-primary">
-              + Add Image
-            </div>
-            <div className="p-3 border border-dashed border-border rounded-lg text-center text-sm text-muted-foreground cursor-pointer hover:border-primary hover:text-primary">
-              + Add Video
-            </div>
-            <div className="p-3 border border-dashed border-border rounded-lg text-center text-sm text-muted-foreground cursor-pointer hover:border-primary hover:text-primary">
-              + Add Text
-            </div>
-          </div>
-        </aside>
-
-        {/* Canvas Area */}
-        <main className="flex-1 flex items-center justify-center bg-muted/30 p-8">
-          <div 
-            className="bg-card border border-border rounded-lg shadow-lg"
-            style={{
-              width: '80%',
-              maxWidth: RATIO_DIMENSIONS[ratio].width / 2,
-              aspectRatio: `${RATIO_DIMENSIONS[ratio].width} / ${RATIO_DIMENSIONS[ratio].height}`,
-            }}
-          >
-            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <p className="text-lg font-medium">Canvas</p>
-                <p className="text-sm">{ratio} • {RATIO_DIMENSIONS[ratio].width}×{RATIO_DIMENSIONS[ratio].height}</p>
-                <p className="text-xs mt-2">{elements.length} elements</p>
-              </div>
-            </div>
-          </div>
-        </main>
-
-        {/* Right Sidebar - Properties */}
-        <aside className="w-72 border-l border-border bg-card p-4">
-          <h3 className="font-semibold mb-4">Properties</h3>
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          <ResizablePanel defaultSize={15} minSize={12} maxSize={20}>
+            <MediaSidebar onAddElement={handleAddElement} />
+          </ResizablePanel>
           
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-muted-foreground">Aspect Ratio</label>
-              <select
-                value={ratio}
-                onChange={(e) => setRatio(e.target.value as AspectRatio)}
-                className="w-full mt-1 px-3 py-2 border border-border rounded-md bg-background text-sm"
-              >
-                <option value="16:9">16:9 (Landscape)</option>
-                <option value="9:16">9:16 (Portrait)</option>
-                <option value="4:3">4:3 (Standard)</option>
-                <option value="1:1">1:1 (Square)</option>
-              </select>
-            </div>
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={60} minSize={40}>
+            <DesignCanvas
+              ratio={currentRatio}
+              elements={elements}
+              selectedElementId={selectedElementId}
+              onSelectElement={setSelectedElementId}
+              onUpdateElement={updateElement}
+              onDeleteElement={deleteElement}
+            />
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+            <PropertyPanel
+              element={selectedElement}
+              onUpdate={(updates) => selectedElementId && updateElement(selectedElementId, updates)}
+              onDelete={() => selectedElementId && deleteElement(selectedElementId)}
+              onDuplicate={() => selectedElementId && duplicateElement(selectedElementId)}
+              onBringToFront={() => selectedElementId && bringToFront(selectedElementId)}
+              onSendToBack={() => selectedElementId && sendToBack(selectedElementId)}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
 
-            <div className="pt-4 border-t border-border">
-              <p className="text-sm text-muted-foreground">
-                Select an element to edit its properties
-              </p>
-            </div>
-          </div>
-        </aside>
+        <TemplatesDialog
+          open={templatesOpen}
+          onOpenChange={setTemplatesOpen}
+          onSelectTemplate={handleSelectTemplate}
+        />
+
+        {publishCode && projectId && (
+          <PublishModal
+            open={publishModalOpen}
+            onOpenChange={setPublishModalOpen}
+            publishCode={publishCode}
+            projectId={projectId}
+          />
+        )}
+
+        <PreviewModal
+          open={previewModalOpen}
+          onOpenChange={setPreviewModalOpen}
+          ratio={currentRatio}
+          elements={elements}
+        />
       </div>
-    </div>
+    </DndContext>
   );
 }
