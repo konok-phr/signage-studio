@@ -4,8 +4,11 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/auth-context';
+import { db } from '@/app/lib/database';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
 import { 
   Plus, 
@@ -13,16 +16,9 @@ import {
   Trash2, 
   Copy, 
   ExternalLink, 
-  Tv,
-  MoreVertical,
+  Monitor,
   ArrowLeft
 } from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -32,6 +28,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
+  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 
 interface Project {
@@ -46,69 +43,71 @@ interface Project {
 
 export default function ProjectsPage() {
   const router = useRouter();
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAuthenticated, isLoading: authLoading } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchProjects();
-  }, []);
+    if (!authLoading && !isAuthenticated) {
+      router.push('/auth');
+      return;
+    }
+    
+    if (user) {
+      fetchProjects();
+    }
+  }, [user, authLoading, isAuthenticated, router]);
 
   const fetchProjects = async () => {
+    if (!user) return;
+    
     try {
-      const response = await fetch('/api/projects');
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      }
+      const { data, error } = await db.getProjectsByUser(user.id);
+
+      if (error) throw error;
+      setProjects(data || []);
     } catch (error) {
+      console.error('Error fetching projects:', error);
       toast.error('Failed to load projects');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteId) return;
-
+  const handleDelete = async (projectId: string) => {
+    if (!user) return;
+    
+    setDeletingId(projectId);
     try {
-      const response = await fetch(`/api/projects/${deleteId}`, {
-        method: 'DELETE',
-      });
+      const { error } = await db.deleteProject(projectId, user.id);
 
-      if (response.ok) {
-        setProjects(projects.filter(p => p.id !== deleteId));
-        toast.success('Project deleted');
-      } else {
-        toast.error('Failed to delete project');
-      }
+      if (error) throw error;
+      
+      setProjects(prev => prev.filter(p => p.id !== projectId));
+      toast.success('Project deleted');
     } catch (error) {
+      console.error('Error deleting project:', error);
       toast.error('Failed to delete project');
     } finally {
-      setDeleteId(null);
+      setDeletingId(null);
     }
   };
 
-  const handleDuplicate = async (project: Project) => {
-    try {
-      const response = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: `${project.name} (Copy)`,
-          ratio: project.ratio,
-        }),
-      });
+  const copyPublishCode = (code: string) => {
+    navigator.clipboard.writeText(code);
+    toast.success('Publish code copied!');
+  };
 
-      if (response.ok) {
-        const newProject = await response.json();
-        setProjects([newProject, ...projects]);
-        toast.success('Project duplicated');
-      }
-    } catch (error) {
-      toast.error('Failed to duplicate project');
-    }
+  const copyDisplayUrl = (projectId: string) => {
+    const url = `${window.location.origin}/display/${projectId}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Display URL copied!');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    router.push('/');
   };
 
   const formatDate = (dateString: string) => {
@@ -119,7 +118,7 @@ export default function ProjectsPage() {
     });
   };
 
-  if (loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="w-12 h-12 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -130,145 +129,149 @@ export default function ProjectsPage() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="border-b border-border/50 bg-background/95 backdrop-blur sticky top-0 z-50">
+      <header className="border-b bg-card">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2">
-              <Tv className="h-6 w-6 text-primary" />
-              <span className="font-bold text-lg">Digital Signage</span>
-            </Link>
+            <Button variant="ghost" size="icon" onClick={() => router.push('/')}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">My Projects</h1>
+              <p className="text-sm text-muted-foreground">Manage your signage projects</p>
+            </div>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.email}</span>
-            <Button variant="ghost" size="sm" onClick={() => signOut()}>
+          <div className="flex items-center gap-3">
+            <Button onClick={() => router.push('/editor')} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Project
+            </Button>
+            <Button variant="outline" onClick={handleSignOut}>
               Sign Out
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Content */}
       <main className="container mx-auto px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">My Projects</h1>
-            <p className="text-muted-foreground mt-1">
-              Manage your digital signage projects
-            </p>
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map(i => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
-          <Link href="/editor">
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-          </Link>
-        </div>
-
-        {projects.length === 0 ? (
+        ) : projects.length === 0 ? (
           <Card className="text-center py-12">
             <CardContent>
-              <Tv className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <Monitor className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <h3 className="text-lg font-semibold mb-2">No projects yet</h3>
               <p className="text-muted-foreground mb-4">
-                Create your first digital signage project
+                Create your first digital signage project to get started.
               </p>
-              <Link href="/editor">
-                <Button>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Project
-                </Button>
-              </Link>
+              <Button onClick={() => router.push('/editor')} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Create Project
+              </Button>
             </CardContent>
           </Card>
         ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projects.map((project) => (
-              <Card key={project.id} className="group">
-                <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                  <div className="space-y-1">
-                    <CardTitle className="text-lg">{project.name}</CardTitle>
-                    <p className="text-sm text-muted-foreground">
-                      {project.ratio} • Updated {formatDate(project.updated_at)}
-                    </p>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map(project => (
+              <Card key={project.id} className="group hover:shadow-md transition-shadow">
+                <CardHeader className="pb-3">
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="text-lg">{project.name}</CardTitle>
+                      <CardDescription>
+                        {project.ratio} • Updated {formatDate(project.updated_at)}
+                      </CardDescription>
+                    </div>
+                    <Badge variant={project.is_published ? 'default' : 'secondary'}>
+                      {project.is_published ? 'Published' : 'Draft'}
+                    </Badge>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleDuplicate(project)}>
-                        <Copy className="mr-2 h-4 w-4" />
-                        Duplicate
-                      </DropdownMenuItem>
-                      {project.is_published && (
-                        <DropdownMenuItem
-                          onClick={() => window.open(`/display/${project.id}`, '_blank')}
-                        >
-                          <ExternalLink className="mr-2 h-4 w-4" />
-                          View Display
-                        </DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={() => setDeleteId(project.id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                  {project.is_published && project.publish_code && (
+                    <div className="flex items-center gap-2 p-2 bg-muted rounded-md">
+                      <span className="text-sm font-mono flex-1">{project.publish_code}</span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => copyPublishCode(project.publish_code!)}
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
+                  
                   <div className="flex items-center gap-2">
-                    {project.is_published ? (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-                        Published
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
-                        Draft
-                      </span>
-                    )}
-                    {project.publish_code && (
-                      <span className="text-xs font-mono text-muted-foreground">
-                        Code: {project.publish_code}
-                      </span>
-                    )}
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Link href={`/editor?project=${project.id}`} className="w-full">
-                    <Button variant="outline" className="w-full">
-                      <Edit className="mr-2 h-4 w-4" />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 gap-2"
+                      onClick={() => router.push(`/editor?project=${project.id}`)}
+                    >
+                      <Edit className="h-4 w-4" />
                       Edit
                     </Button>
-                  </Link>
-                </CardFooter>
+                    
+                    {project.is_published && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => copyDisplayUrl(project.id)}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                    
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete project?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            This will permanently delete "{project.name}" and all its content.
+                            This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDelete(project.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            {deletingId === project.id ? 'Deleting...' : 'Delete'}
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
+                </CardContent>
               </Card>
             ))}
           </div>
         )}
       </main>
-
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Project</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete this project? This action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
